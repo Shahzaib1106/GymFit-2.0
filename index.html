@@ -2,12 +2,38 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>gymfit-2-0</title>
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <meta
+      name="description"
+      content="GymFit 2.0 — Modern gym management and fitness tracking platform."
+    />
+
+    <meta
+      name="theme-color"
+      content="#050505"
+    />
+
+    <script>
+  (() => {
+    const theme = localStorage.getItem("gymfit_theme");
+
+    if (theme === "light") {
+      document.documentElement.classList.add("light");
+    }
+  })();
+</script>
+
+    <title>GymFit 2.0 | Fitness Management Platform</title>
   </head>
+
   <body>
     <div id="root"></div>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
