@@ -1,3 +1,5 @@
+/* global process */
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -56,7 +58,7 @@ app.use((req, res) => {
   });
 });
 
-app.use((error, req, res, next) => {
+app.use((error, req, res) => {
   console.error("Server error:", error);
 
   res.status(error.status || 500).json({
