@@ -1,368 +1,258 @@
 import {
   Activity,
-  ArrowRight,
-  ChevronRight,
+  CalendarDays,
   Flame,
   Target,
   TrendingUp,
-  Utensils,
+  Dumbbell,
+  ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 
-import MemberSidebar from "../../components/MemberSidebar";
-import MemberHeader from "../../components/MemberHeader";
-import { useState } from "react";
+import MemberSidebar from "../../components/MemberSidebar.jsx";
+import MemberHeader from "../../components/MemberHeader.jsx";
+import { useAuth } from "../../context/useAuth.jsx";
 
-const stats = [
-  {
-    label: "Workout Streak",
-    value: "12",
-    unit: "days",
-    change: "+3 this week",
-    icon: Flame,
-  },
-  {
-    label: "Workouts",
-    value: "28",
-    unit: "completed",
-    change: "+6 this month",
-    icon: Activity,
-  },
-  {
-    label: "Goal Progress",
-    value: "74",
-    unit: "%",
-    change: "+8% this month",
-    icon: Target,
-  },
-  {
-    label: "Calories",
-    value: "1,840",
-    unit: "today",
-    change: "82% of target",
-    icon: Utensils,
-  },
-];
+function MemberDashboard() {
+  const { user } = useAuth();
 
-const week = [
-  { day: "MON", date: "21", status: "done" },
-  { day: "TUE", date: "22", status: "done" },
-  { day: "WED", date: "23", status: "done" },
-  { day: "THU", date: "24", status: "today" },
-  { day: "FRI", date: "25", status: "upcoming" },
-  { day: "SAT", date: "26", status: "upcoming" },
-  { day: "SUN", date: "27", status: "rest" },
-];
+  const firstName = user?.name?.split(" ")[0] || "Member";
 
-export default function MemberDashboard() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const stats = [
+    {
+      label: "Current Streak",
+      value: "7",
+      unit: "days",
+      icon: Flame,
+    },
+    {
+      label: "Workouts",
+      value: "24",
+      unit: "this month",
+      icon: Dumbbell,
+    },
+    {
+      label: "Goal Progress",
+      value: "78",
+      unit: "%",
+      icon: Target,
+    },
+    {
+      label: "Calories Burned",
+      value: "12.4K",
+      unit: "kcal",
+      icon: Activity,
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: "Start Workout",
+      description: "Continue your training plan",
+      icon: Dumbbell,
+      path: "/member/workouts",
+    },
+    {
+      title: "Track Progress",
+      description: "View your fitness analytics",
+      icon: TrendingUp,
+      path: "/member/progress",
+    },
+    {
+      title: "Nutrition",
+      description: "Check today's nutrition plan",
+      icon: Flame,
+      path: "/member/nutrition",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <MemberSidebar
-        mobileOpen={mobileOpen}
-        setMobileOpen={setMobileOpen}
-      />
+      <MemberSidebar />
 
-      <div className="lg:pl-72">
-        <MemberHeader onMenu={() => setMobileOpen(true)} />
+      <div className="lg:ml-64">
+        <MemberHeader />
 
-        <main className="mx-auto max-w-[1600px] px-5 py-7 lg:px-8">
-          <section className="relative overflow-hidden rounded-3xl border border-orange-500/20 bg-gradient-to-br from-orange-500/15 via-white/[0.03] to-transparent p-7 sm:p-9">
-            <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
-
-            <div className="relative max-w-3xl">
-              <p className="text-sm font-bold uppercase tracking-[0.2em] text-orange-500">
-                Thursday • September 25
+        <main className="p-5 sm:p-6 lg:p-8">
+          {/* HERO */}
+          <section className="mb-8 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-orange-500/15 via-[#111] to-[#080808] p-6 sm:p-8">
+            <div className="max-w-3xl">
+              <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-orange-500">
+                Your Fitness Dashboard
               </p>
 
-              <h2 className="mt-3 text-3xl font-black sm:text-4xl">
-                Keep the momentum going.
+              <h2 className="text-3xl font-black sm:text-4xl">
+                Let's keep the momentum,
+                <span className="text-orange-500">
+                  {" "}
+                  {firstName}.
+                </span>
               </h2>
 
-              <p className="mt-3 max-w-xl text-sm leading-6 text-gray-400">
-                You are building a strong consistency streak. Complete
-                today's session and keep moving toward your goal.
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-400">
+                Track your workouts, monitor your progress and stay consistent
+                with your fitness goals.
               </p>
 
-              <Link
-                to="/member/workouts"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold transition hover:bg-orange-600"
-              >
-                Start Today's Workout
-                <ArrowRight size={17} />
-              </Link>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold text-orange-400">
+                  Goal:{" "}
+                  {user?.fitness_goal?.replaceAll("_", " ") ||
+                    "General Fitness"}
+                </span>
+
+                <span className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-gray-400">
+                  Member
+                </span>
+              </div>
             </div>
           </section>
 
-          <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat, index) => {
+          {/* STATS */}
+          <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {stats.map((stat) => {
               const Icon = stat.icon;
 
               return (
-                <motion.div
+                <div
                   key={stat.label}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"
+                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition hover:border-orange-500/20"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-gray-600">
-                        {stat.label}
-                      </p>
-
-                      <div className="mt-3 flex items-end gap-2">
-                        <span className="text-3xl font-black">
-                          {stat.value}
-                        </span>
-
-                        <span className="mb-1 text-xs text-gray-600">
-                          {stat.unit}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl bg-orange-500/10 p-2.5 text-orange-500">
+                  <div className="mb-5 flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
                       <Icon size={19} />
                     </div>
+
+                    <TrendingUp
+                      size={16}
+                      className="text-green-500"
+                    />
                   </div>
 
-                  <p className="mt-4 text-xs font-medium text-green-400">
-                    {stat.change}
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+                    {stat.label}
                   </p>
-                </motion.div>
+
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-3xl font-black">
+                      {stat.value}
+                    </span>
+
+                    <span className="text-xs text-gray-600">
+                      {stat.unit}
+                    </span>
+                  </div>
+                </div>
               );
             })}
           </section>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-3">
-            <section className="xl:col-span-2 rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-              <div className="flex items-center justify-between">
+          {/* CONTENT GRID */}
+          <section className="grid gap-6 xl:grid-cols-3">
+            {/* QUICK ACTIONS */}
+            <div className="xl:col-span-2">
+              <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-600">
-                    Weekly activity
+                  <p className="text-xs font-bold uppercase tracking-widest text-orange-500">
+                    Quick Access
                   </p>
 
-                  <h3 className="mt-2 text-xl font-black">
-                    Training calendar
+                  <h3 className="mt-1 text-xl font-bold">
+                    Keep moving
                   </h3>
                 </div>
-
-                <Link
-                  to="/member/progress"
-                  className="text-xs font-semibold text-orange-500"
-                >
-                  View progress
-                </Link>
               </div>
 
-              <div className="mt-8 grid grid-cols-7 gap-2">
-                {week.map((item) => (
-                  <div
-                    key={item.day}
-                    className={`rounded-xl p-3 text-center ${
-                      item.status === "today"
-                        ? "border border-orange-500/40 bg-orange-500/10"
-                        : "border border-white/5 bg-black/30"
-                    }`}
-                  >
-                    <p className="text-[9px] font-bold text-gray-600">
-                      {item.day}
-                    </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
 
-                    <p className="mt-2 text-lg font-black">
-                      {item.date}
-                    </p>
+                  return (
+                    <Link
+                      key={action.title}
+                      to={action.path}
+                      className="group rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition hover:-translate-y-1 hover:border-orange-500/30 hover:bg-orange-500/[0.03]"
+                    >
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
+                        <Icon size={20} />
+                      </div>
 
-                    <div
-                      className={`mx-auto mt-3 h-2 w-2 rounded-full ${
-                        item.status === "done"
-                          ? "bg-green-500"
-                          : item.status === "today"
-                            ? "bg-orange-500"
-                            : item.status === "rest"
-                              ? "bg-gray-700"
-                              : "bg-gray-800"
-                      }`}
-                    />
-                  </div>
-                ))}
+                      <h4 className="mt-5 font-bold">
+                        {action.title}
+                      </h4>
+
+                      <p className="mt-2 text-xs leading-5 text-gray-600">
+                        {action.description}
+                      </p>
+
+                      <div className="mt-5 flex items-center gap-2 text-xs font-bold text-orange-500">
+                        Open
+                        <ArrowRight
+                          size={14}
+                          className="transition group-hover:translate-x-1"
+                        />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
+            </div>
 
-              <div className="mt-6 flex flex-wrap gap-5 text-xs text-gray-600">
-                <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                  Completed
-                </span>
+            {/* TODAY */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
+                  <CalendarDays size={19} />
+                </div>
 
-                <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-orange-500" />
-                  Today
-                </span>
-
-                <span className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-gray-700" />
-                  Rest
-                </span>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-              <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-600">
-                    Today's plan
+                  <p className="text-xs uppercase tracking-widest text-gray-600">
+                    Today's Plan
                   </p>
 
-                  <h3 className="mt-2 text-xl font-black">
-                    Upper Body
+                  <h3 className="font-bold">
+                    Thursday Workout
                   </h3>
-                </div>
-
-                <div className="rounded-xl bg-orange-500/10 p-2.5 text-orange-500">
-                  <DumbbellIcon />
                 </div>
               </div>
 
-              <div className="mt-7 space-y-3">
-                {[
-                  ["Bench Press", "4 × 10"],
-                  ["Lat Pulldown", "4 × 12"],
-                  ["Shoulder Press", "3 × 10"],
-                  ["Cable Row", "3 × 12"],
-                ].map(([name, sets]) => (
-                  <div
-                    key={name}
-                    className="flex items-center justify-between rounded-xl border border-white/5 bg-black/30 px-4 py-3"
-                  >
-                    <span className="text-sm font-medium">{name}</span>
-                    <span className="text-xs text-gray-600">{sets}</span>
-                  </div>
-                ))}
+              <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-orange-500">
+                  Upper Body
+                </p>
+
+                <p className="mt-2 text-sm font-bold">
+                  Strength & Hypertrophy
+                </p>
+
+                <p className="mt-2 text-xs leading-5 text-gray-600">
+                  Chest, shoulders, triceps and core.
+                </p>
+
+                <div className="mt-4 flex items-center justify-between text-xs">
+                  <span className="text-gray-600">
+                    45 min
+                  </span>
+
+                  <span className="text-gray-600">
+                    6 exercises
+                  </span>
+                </div>
               </div>
 
               <Link
                 to="/member/workouts"
-                className="mt-5 flex items-center justify-between rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold transition hover:bg-white/5"
+                className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-xs font-bold text-white transition hover:bg-orange-600"
               >
-                Open workout
-                <ChevronRight size={17} />
+                View Workout
+                <ArrowRight size={15} />
               </Link>
-            </section>
-          </div>
-
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
-            <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-600">
-                    Body composition
-                  </p>
-
-                  <h3 className="mt-2 text-xl font-black">
-                    Current progress
-                  </h3>
-                </div>
-
-                <TrendingUp className="text-orange-500" size={21} />
-              </div>
-
-              <div className="mt-8 grid grid-cols-3 gap-4">
-                <MiniStat label="Weight" value="74.2" unit="kg" />
-                <MiniStat label="Body Fat" value="18.4" unit="%" />
-                <MiniStat label="BMI" value="23.1" unit="" />
-              </div>
-
-              <div className="mt-7 h-2 overflow-hidden rounded-full bg-white/5">
-                <div className="h-full w-[74%] rounded-full bg-orange-500" />
-              </div>
-
-              <div className="mt-3 flex justify-between text-xs text-gray-600">
-                <span>Goal progress</span>
-                <span>74%</span>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-600">
-                    Membership
-                  </p>
-
-                  <h3 className="mt-2 text-xl font-black">
-                    Pro Plan
-                  </h3>
-                </div>
-
-                <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-bold text-green-400">
-                  ACTIVE
-                </span>
-              </div>
-
-              <div className="mt-7 flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-black">6,500</p>
-                  <p className="mt-1 text-xs text-gray-600">PKR / month</p>
-                </div>
-
-                <p className="text-right text-xs text-gray-500">
-                  Renews
-                  <br />
-                  <span className="font-bold text-gray-300">
-                    Oct 03, 2026
-                  </span>
-                </p>
-              </div>
-
-              <Link
-                to="/member/membership"
-                className="mt-6 flex items-center justify-between rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold transition hover:bg-white/5"
-              >
-                Manage membership
-                <ChevronRight size={17} />
-              </Link>
-            </section>
-          </div>
+            </div>
+          </section>
         </main>
       </div>
     </div>
   );
 }
 
-function MiniStat({ label, value, unit }) {
-  return (
-    <div className="rounded-xl border border-white/5 bg-black/30 p-4">
-      <p className="text-[10px] uppercase tracking-wider text-gray-600">
-        {label}
-      </p>
-
-      <div className="mt-2 flex items-end gap-1">
-        <span className="text-xl font-black">{value}</span>
-        <span className="text-[10px] text-gray-600">{unit}</span>
-      </div>
-    </div>
-  );
-}
-
-function DumbbellIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M6.5 6.5v11" />
-      <path d="M17.5 6.5v11" />
-      <path d="M3.5 9v6" />
-      <path d="M20.5 9v6" />
-      <path d="M6.5 12h11" />
-    </svg>
-  );
-}
+export default MemberDashboard;

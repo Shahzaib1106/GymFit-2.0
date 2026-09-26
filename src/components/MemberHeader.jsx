@@ -1,70 +1,80 @@
-import { Bell, Menu, Search } from "lucide-react";
-import ThemeToggle from "./ThemeToggle";
+import { Bell, LogOut, Menu, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-export default function MemberHeader({ onMenu }) {
-  const user = JSON.parse(
-    localStorage.getItem("gymfit_user") || '{"name":"Member"}'
-  );
+import { useAuth } from "../context/useAuth.jsx";
 
-  const firstName = user.name?.split(" ")[0] || "Member";
+function MemberHeader({ onMenuClick }) {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
+  const displayName = user?.name || "Member";
 
   return (
-    <header className="gf-glass sticky top-0 z-30 flex h-20 items-center justify-between px-5 lg:px-8">
-      {/* Left Side */}
+    <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-white/10 bg-[#080808]/90 px-5 backdrop-blur-xl lg:px-8">
       <div className="flex items-center gap-4">
         <button
           type="button"
-          onClick={onMenu}
-          aria-label="Open member menu"
-          className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-gray-400 transition hover:border-orange-500/30 hover:bg-white/5 hover:text-orange-500 lg:hidden"
+          onClick={onMenuClick}
+          className="rounded-xl border border-white/10 p-2 text-gray-400 transition hover:border-orange-500/30 hover:text-white lg:hidden"
         >
-          <Menu size={21} />
+          <Menu size={20} />
         </button>
 
         <div>
-          <p className="hidden text-xs font-medium uppercase tracking-wider text-gray-600 sm:block">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-600">
             Member Portal
           </p>
 
-          <h1 className="mt-0.5 text-lg font-bold">
-            Good morning, {firstName}.
+          <h1 className="text-lg font-bold text-white">
+            Welcome back, {displayName.split(" ")[0]}.
           </h1>
         </div>
       </div>
 
-      {/* Right Side */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Theme Toggle */}
-        <ThemeToggle />
-
-        {/* Search */}
+      <div className="flex items-center gap-3">
         <button
           type="button"
-          aria-label="Search"
-          className="hidden rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-gray-500 transition hover:border-orange-500/30 hover:bg-white/5 hover:text-orange-500 sm:block"
-        >
-          <Search size={19} />
-        </button>
-
-        {/* Notifications */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-gray-500 transition hover:border-orange-500/30 hover:bg-white/5 hover:text-orange-500"
+          className="relative rounded-xl border border-white/10 p-2.5 text-gray-400 transition hover:border-orange-500/30 hover:text-white"
         >
           <Bell size={19} />
 
           <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-orange-500" />
         </button>
 
-        {/* User Avatar */}
-        <div
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 font-black text-white shadow-lg shadow-orange-500/10"
-          title={user.name || "Member"}
-        >
-          {user.name?.charAt(0)?.toUpperCase() || "M"}
+        <div className="hidden h-9 w-px bg-white/10 sm:block" />
+
+        <div className="hidden items-center gap-3 sm:flex">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/10 text-orange-500">
+            <User size={18} />
+          </div>
+
+          <div className="max-w-32">
+            <p className="truncate text-sm font-semibold text-white">
+              {displayName}
+            </p>
+
+            <p className="truncate text-xs text-gray-600">
+              {user?.email || "Member"}
+            </p>
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          title="Logout"
+          className="rounded-xl border border-white/10 p-2.5 text-gray-400 transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400"
+        >
+          <LogOut size={19} />
+        </button>
       </div>
     </header>
   );
 }
+
+export default MemberHeader;

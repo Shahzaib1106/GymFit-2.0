@@ -1,105 +1,121 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+BrowserRouter,
+Routes,
+Route,
+Navigate,
+} from "react-router-dom";
 
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+import Home from "./pages/Home.jsx";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
 
-import MemberDashboard from "./pages/member/MemberDashboard";
-import Workouts from "./pages/member/Workouts";
-import Exercises from "./pages/member/Exercises";
-import Progress from "./pages/member/Progress";
-import Nutrition from "./pages/member/Nutrition";
-import Membership from "./pages/member/Membership";
-import Profile from "./pages/member/Profile";
+import MemberDashboard from "./pages/Member/MemberDashboard.jsx";
+import Workouts from "./pages/Member/Workouts.jsx";
+import Exercises from "./pages/Member/Exercises.jsx";
+import Progress from "./pages/Member/Progress.jsx";
+import Nutrition from "./pages/Member/Nutrition.jsx";
+import Membership from "./pages/Member/Membership.jsx";
+import Profile from "./pages/Member/Profile.jsx";
+
+import { useAuth } from "./context/useAuth.jsx";
 
 function ProtectedRoute({ children }) {
-  const user = localStorage.getItem("gymfit_user");
+const { user, loading } = useAuth();
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+if (loading) {
+return ( <div className="flex min-h-screen items-center justify-center bg-[#050505] text-white"> <div className="text-center"> <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" /> <p className="text-sm text-gray-400">
+Loading GymFit... </p> </div> </div>
+);
+}
 
-  return children;
+if (!user) {
+return <Navigate to="/login" replace />;
+}
+
+return children;
 }
 
 function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+return ( <BrowserRouter> <Routes>
+<Route path="/" element={<Home />} />
 
-        {/* Member Portal */}
-        <Route
-          path="/member"
-          element={
-            <ProtectedRoute>
-              <MemberDashboard />
-            </ProtectedRoute>
-          }
-        />
+```
+    <Route path="/login" element={<Login />} />
 
-        <Route
-          path="/member/workouts"
-          element={
-            <ProtectedRoute>
-              <Workouts />
-            </ProtectedRoute>
-          }
-        />
+    <Route path="/register" element={<Register />} />
 
-        <Route
-          path="/member/exercises"
-          element={
-            <ProtectedRoute>
-              <Exercises />
-            </ProtectedRoute>
-          }
-        />
+    <Route
+      path="/member"
+      element={
+        <ProtectedRoute>
+          <MemberDashboard />
+        </ProtectedRoute>
+      }
+    />
 
-        <Route
-          path="/member/progress"
-          element={
-            <ProtectedRoute>
-              <Progress />
-            </ProtectedRoute>
-          }
-        />
+    <Route
+      path="/member/workouts"
+      element={
+        <ProtectedRoute>
+          <Workouts />
+        </ProtectedRoute>
+      }
+    />
 
-        <Route
-          path="/member/nutrition"
-          element={
-            <ProtectedRoute>
-              <Nutrition />
-            </ProtectedRoute>
-          }
-        />
+    <Route
+      path="/member/exercises"
+      element={
+        <ProtectedRoute>
+          <Exercises />
+        </ProtectedRoute>
+      }
+    />
 
-        <Route
-          path="/member/membership"
-          element={
-            <ProtectedRoute>
-              <Membership />
-            </ProtectedRoute>
-          }
-        />
+    <Route
+      path="/member/progress"
+      element={
+        <ProtectedRoute>
+          <Progress />
+        </ProtectedRoute>
+      }
+    />
 
-        <Route
-          path="/member/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+    <Route
+      path="/member/nutrition"
+      element={
+        <ProtectedRoute>
+          <Nutrition />
+        </ProtectedRoute>
+      }
+    />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  );
+    <Route
+      path="/member/membership"
+      element={
+        <ProtectedRoute>
+          <Membership />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="/member/profile"
+      element={
+        <ProtectedRoute>
+          <Profile />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path="*"
+      element={<Navigate to="/" replace />}
+    />
+  </Routes>
+</BrowserRouter>
+
+
+);
 }
 
 export default App;

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  CheckCircle2,
+  Check,
   Dumbbell,
   Eye,
   EyeOff,
@@ -12,73 +12,88 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-export default function Register() {
+import { useAuth } from "../context/useAuth.jsx";
+
+function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
-    confirmPassword: "",
+    fitness_goal: "general_fitness",
   });
 
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((previous) => ({
+      ...previous,
       [e.target.name]: e.target.value,
-    });
+    }));
+
+    if (error) {
+      setError("");
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!form.name || !form.email || !form.password || !form.confirmPassword) {
-      setError("Please complete all fields.");
+    if (!form.name.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
+
+    if (!form.email.trim()) {
+      setError("Please enter your email.");
+      return;
+    }
+
+    if (!form.password) {
+      setError("Please enter a password.");
       return;
     }
 
     if (form.password.length < 6) {
-      setError("Password must contain at least 6 characters.");
+      setError("Password must be at least 6 characters.");
       return;
     }
 
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
+    try {
+      setLoading(true);
 
-    localStorage.setItem(
-      "gymfit_registered_user",
-      JSON.stringify({
-        name: form.name,
-        email: form.email,
+      await register({
+        name: form.name.trim(),
+        email: form.email.trim(),
         password: form.password,
-      })
-    );
+        fitness_goal: form.fitness_goal,
+      });
 
-    localStorage.setItem(
-      "gymfit_user",
-      JSON.stringify({
-        name: form.name,
-        email: form.email,
-      })
-    );
-
-    navigate("/member");
+      navigate("/member");
+    } catch (error) {
+      console.error("Registration failed:", error);
+      setError(
+        error.message || "Unable to create account. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="grid min-h-screen lg:grid-cols-2">
-        {/* Left */}
+        {/* LEFT SIDE */}
         <div className="relative hidden overflow-hidden lg:block">
           <img
             src="https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg"
-            alt="Fitness training"
+            alt="Gym training"
             className="absolute inset-0 h-full w-full object-cover"
           />
 
@@ -93,30 +108,37 @@ export default function Register() {
 
             <div className="max-w-lg">
               <p className="mb-5 text-sm font-bold uppercase tracking-[0.25em] text-orange-500">
-                Start Today
+                Start Your Journey
               </p>
 
               <h1 className="text-5xl font-black leading-[1] xl:text-6xl">
                 BUILD YOUR
-                <span className="block text-orange-500">STRONGEST</span>
-                VERSION.
+                <span className="block text-orange-500">
+                  STRONGER
+                </span>
+                SELF.
               </h1>
+
+              <p className="mt-6 max-w-md text-sm leading-7 text-gray-300">
+                Create your GymFit account and get access to personalized
+                workouts, nutrition tracking, progress analytics and your
+                membership dashboard.
+              </p>
 
               <div className="mt-8 space-y-4">
                 {[
-                  "Personalized workout tracking",
-                  "Progress & performance analytics",
-                  "Nutrition management",
-                  "Digital membership management",
+                  "Personalized workout plans",
+                  "Progress tracking",
+                  "Nutrition guidance",
+                  "Membership management",
                 ].map((item) => (
                   <div
                     key={item}
                     className="flex items-center gap-3 text-sm text-gray-300"
                   >
-                    <CheckCircle2
-                      size={18}
-                      className="text-orange-500"
-                    />
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-500/15 text-orange-500">
+                      <Check size={14} />
+                    </span>
                     {item}
                   </div>
                 ))}
@@ -129,7 +151,7 @@ export default function Register() {
           </div>
         </div>
 
-        {/* Right */}
+        {/* RIGHT SIDE */}
         <div className="flex items-center justify-center px-5 py-12 sm:px-8 lg:px-16">
           <motion.div
             initial={{ opacity: 0, y: 25 }}
@@ -143,7 +165,7 @@ export default function Register() {
               </Link>
             </div>
 
-            <div className="mb-8">
+            <div className="mb-9">
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500">
                 <Dumbbell size={23} />
               </div>
@@ -153,20 +175,21 @@ export default function Register() {
               </h2>
 
               <p className="mt-3 text-sm leading-6 text-gray-500">
-                Join GymFit and start tracking your fitness journey.
+                Join GymFit and start building your progress.
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
                   {error}
                 </div>
               )}
 
+              {/* NAME */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-300">
-                  Full name
+                  Full Name
                 </label>
 
                 <div className="relative">
@@ -181,11 +204,14 @@ export default function Register() {
                     value={form.name}
                     onChange={handleChange}
                     placeholder="Your full name"
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-700 focus:border-orange-500"
+                    autoComplete="name"
+                    disabled={loading}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-700 focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
               </div>
 
+              {/* EMAIL */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-300">
                   Email
@@ -203,11 +229,14 @@ export default function Register() {
                     value={form.email}
                     onChange={handleChange}
                     placeholder="you@example.com"
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-700 focus:border-orange-500"
+                    autoComplete="email"
+                    disabled={loading}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-700 focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
               </div>
 
+              {/* PASSWORD */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-300">
                   Password
@@ -225,13 +254,16 @@ export default function Register() {
                     value={form.password}
                     onChange={handleChange}
                     placeholder="Minimum 6 characters"
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-12 text-sm outline-none transition placeholder:text-gray-700 focus:border-orange-500"
+                    autoComplete="new-password"
+                    disabled={loading}
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-12 text-sm outline-none transition placeholder:text-gray-700 focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white"
+                    disabled={loading}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 transition hover:text-white"
                   >
                     {showPassword ? (
                       <EyeOff size={18} />
@@ -242,51 +274,55 @@ export default function Register() {
                 </div>
               </div>
 
+              {/* FITNESS GOAL */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-300">
-                  Confirm password
+                  Fitness Goal
                 </label>
 
-                <div className="relative">
-                  <Lock
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600"
-                  />
-
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Repeat your password"
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-700 focus:border-orange-500"
-                  />
-                </div>
+                <select
+                  name="fitness_goal"
+                  value={form.fitness_goal}
+                  onChange={handleChange}
+                  disabled={loading}
+                  className="w-full rounded-xl border border-white/10 bg-[#111] px-4 py-4 text-sm text-white outline-none transition focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="general_fitness">
+                    General Fitness
+                  </option>
+                  <option value="weight_loss">
+                    Weight Loss
+                  </option>
+                  <option value="muscle_gain">
+                    Muscle Gain
+                  </option>
+                  <option value="strength">
+                    Strength
+                  </option>
+                  <option value="endurance">
+                    Endurance
+                  </option>
+                </select>
               </div>
 
-              <label className="flex items-start gap-3 py-2 text-xs leading-5 text-gray-500">
-                <input
-                  type="checkbox"
-                  required
-                  className="mt-1 accent-orange-500"
-                />
-                I agree to the GymFit terms and understand that this is a
-                fitness management platform.
-              </label>
-
+              {/* SUBMIT */}
               <button
                 type="submit"
-                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-4 text-sm font-bold transition hover:bg-orange-600"
+                disabled={loading}
+                className="group flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-4 text-sm font-bold transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Create Account
-                <ArrowRight
-                  size={18}
-                  className="transition group-hover:translate-x-1"
-                />
+                {loading ? "Creating account..." : "Create Account"}
+
+                {!loading && (
+                  <ArrowRight
+                    size={18}
+                    className="transition group-hover:translate-x-1"
+                  />
+                )}
               </button>
             </form>
 
-            <p className="mt-7 text-center text-sm text-gray-500">
+            <p className="mt-8 text-center text-sm text-gray-500">
               Already have an account?{" "}
               <Link
                 to="/login"
@@ -298,9 +334,9 @@ export default function Register() {
 
             <Link
               to="/"
-              className="mt-7 block text-center text-xs text-gray-600 transition hover:text-gray-400"
+              className="mt-8 block text-center text-xs text-gray-600 transition hover:text-gray-400"
             >
-              ← Back to GymFit
+              ← Back to home
             </Link>
           </motion.div>
         </div>
@@ -308,3 +344,5 @@ export default function Register() {
     </div>
   );
 }
+
+export default Register;
