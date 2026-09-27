@@ -1,11 +1,4 @@
-
 import pool from "../config/db.js";
-
-/*
-=========================================================
-GET MY PROFILE
-=========================================================
-*/
 
 export const getMyProfile = async (req, res) => {
   try {
@@ -17,15 +10,11 @@ export const getMyProfile = async (req, res) => {
         u.email,
         u.role,
         u.created_at,
-
         m.id AS member_id,
         m.fitness_goal
-
       FROM users AS u
-
       LEFT JOIN members AS m
         ON m.user_id = u.id
-
       WHERE u.id = $1
       `,
       [req.user.id]
@@ -52,20 +41,8 @@ export const getMyProfile = async (req, res) => {
   }
 };
 
-/*
-=========================================================
-GET MEMBER DASHBOARD
-=========================================================
-*/
-
 export const getDashboard = async (req, res) => {
   try {
-    /*
-    -----------------------------------------------------
-    1. MEMBER PROFILE
-    -----------------------------------------------------
-    */
-
     const memberResult = await pool.query(
       `
       SELECT
@@ -74,15 +51,11 @@ export const getDashboard = async (req, res) => {
         u.email,
         u.role,
         u.created_at,
-
         m.id AS member_id,
         m.fitness_goal
-
       FROM users AS u
-
-      LEFT JOIN members AS m
+      INNER JOIN members AS m
         ON m.user_id = u.id
-
       WHERE u.id = $1
       `,
       [req.user.id]
@@ -91,190 +64,104 @@ export const getDashboard = async (req, res) => {
     if (memberResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Member not found.",
+        message: "Member profile not found.",
       });
     }
 
     const member = memberResult.rows[0];
-
-    /*
-    -----------------------------------------------------
-    2. WORKOUT STATISTICS
-    -----------------------------------------------------
-    */
 
     const statsResult = await pool.query(
       `
       SELECT
         COUNT(*) FILTER (
           WHERE status = 'completed'
-        )::integer AS completed_workouts,
+        )::int AS "completedWorkouts",
 
         COALESCE(
-          SUM(calories_burned)
-          FILTER (WHERE status = 'completed'),
+          SUM(calories_burned) FILTER (
+            WHERE status = 'completed'
+          ),
           0
-        )::integer AS calories_burned,
+        )::int AS "caloriesBurned",
 
         COALESCE(
-          SUM(duration_minutes)
-          FILTER (WHERE status = 'completed'),
+          SUM(duration_minutes) FILTER (
+            WHERE status = 'completed'
+          ),
           0
-        )::integer AS workout_minutes,
+        )::int AS "workoutMinutes",
 
         COUNT(*) FILTER (
           WHERE status = 'started'
-        )::integer AS active_workouts
+        )::int AS "activeWorkouts"
 
       FROM workout_logs
-
       WHERE member_id = $1
       `,
       [member.member_id]
     );
 
-    /*
-    -----------------------------------------------------
-    3. AVAILABLE WORKOUTS
-    -----------------------------------------------------
-    */
-
-    const workoutCountResult = await pool.query(
-      `
-      SELECT COUNT(*)::integer AS total_workouts
-
-      FROM workouts
-
-      WHERE is_active = true
-      `
-    );
-
-    /*
-    -----------------------------------------------------
-    4. AVAILABLE EXERCISES
-    -----------------------------------------------------
-    */
-
-    const exerciseCountResult = await pool.query(
-      `
-      SELECT COUNT(*)::integer AS total_exercises
-
-      FROM exercises
-      `
-    );
-
-    /*
-    -----------------------------------------------------
-    5. RECENT WORKOUTS
-    -----------------------------------------------------
-    */
-
-    const recentWorkoutsResult = await pool.query(
+    const availableResult = await pool.query(
       `
       SELECT
-        wl.id AS log_id,
+        (SELECT COUNT(*) FROM workouts WHERE is_active = true)::int
+          AS "availableWorkouts",
 
+        (SELECT COUNT(*) FROM exercises)::int
+          AS "availableExercises"
+      `
+    );
+
+    const recentResult = await pool.query(
+      `
+      SELECT
+        wl.id,
         wl.workout_id,
-
-        w.name,
+        w.name AS workout_name,
         w.category,
         w.difficulty,
-
         wl.started_at,
         wl.completed_at,
         wl.duration_minutes,
         wl.calories_burned,
         wl.status
-
       FROM workout_logs AS wl
-
       LEFT JOIN workouts AS w
         ON w.id = wl.workout_id
-
       WHERE wl.member_id = $1
-
       ORDER BY wl.created_at DESC
-
       LIMIT 5
       `,
       [member.member_id]
     );
 
-    /*
-    -----------------------------------------------------
-    6. WEEKLY ACTIVITY
-    -----------------------------------------------------
-    */
-
-    const weeklyActivityResult = await pool.query(
+    const weeklyResult = await pool.query(
       `
       SELECT
-        DATE(created_at) AS workout_date,
-
-        COUNT(*)::integer AS workouts,
-
-        COALESCE(
-          SUM(duration_minutes),
-          0
-        )::integer AS minutes,
-
-        COALESCE(
-          SUM(calories_burned),
-          0
-        )::integer AS calories
-
+        DATE(completed_at) AS date,
+        COUNT(*)::int AS workouts,
+        COALESCE(SUM(calories_burned), 0)::int AS calories,
+        COALESCE(SUM(duration_minutes), 0)::int AS minutes
       FROM workout_logs
-
       WHERE member_id = $1
-
         AND status = 'completed'
-
-        AND created_at >= CURRENT_DATE - INTERVAL '6 days'
-
-      GROUP BY DATE(created_at)
-
-      ORDER BY workout_date ASC
+        AND completed_at >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY DATE(completed_at)
+      ORDER BY date ASC
       `,
       [member.member_id]
     );
 
-    /*
-    -----------------------------------------------------
-    7. RESPONSE
-    -----------------------------------------------------
-    */
-
     return res.status(200).json({
       success: true,
-
       dashboard: {
         member,
-
         stats: {
-          completedWorkouts:
-            statsResult.rows[0]?.completed_workouts || 0,
-
-          caloriesBurned:
-            statsResult.rows[0]?.calories_burned || 0,
-
-          workoutMinutes:
-            statsResult.rows[0]?.workout_minutes || 0,
-
-          activeWorkouts:
-            statsResult.rows[0]?.active_workouts || 0,
-
-          availableWorkouts:
-            workoutCountResult.rows[0]?.total_workouts || 0,
-
-          availableExercises:
-            exerciseCountResult.rows[0]?.total_exercises || 0,
+          ...statsResult.rows[0],
+          ...availableResult.rows[0],
         },
-
-        recentWorkouts:
-          recentWorkoutsResult.rows,
-
-        weeklyActivity:
-          weeklyActivityResult.rows,
+        recentWorkouts: recentResult.rows,
+        weeklyActivity: weeklyResult.rows,
       },
     });
   } catch (error) {
@@ -287,3 +174,231 @@ export const getDashboard = async (req, res) => {
   }
 };
 
+export const startWorkout = async (req, res) => {
+  try {
+    const { workoutId } = req.body;
+
+    if (!workoutId) {
+      return res.status(400).json({
+        success: false,
+        message: "Workout ID is required.",
+      });
+    }
+
+    const memberResult = await pool.query(
+      `
+      SELECT id
+      FROM members
+      WHERE user_id = $1
+      `,
+      [req.user.id]
+    );
+
+    if (memberResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Member profile not found.",
+      });
+    }
+
+    const memberId = memberResult.rows[0].id;
+
+    const workoutResult = await pool.query(
+      `
+      SELECT
+        id,
+        name,
+        calories_burned,
+        duration_minutes
+      FROM workouts
+      WHERE id = $1
+        AND is_active = true
+      `,
+      [workoutId]
+    );
+
+    if (workoutResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Workout not found.",
+      });
+    }
+
+    const activeResult = await pool.query(
+      `
+      SELECT id
+      FROM workout_logs
+      WHERE member_id = $1
+        AND status = 'started'
+      ORDER BY started_at DESC
+      LIMIT 1
+      `,
+      [memberId]
+    );
+
+    if (activeResult.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "You already have an active workout.",
+        logId: activeResult.rows[0].id,
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO workout_logs (
+        member_id,
+        workout_id,
+        started_at,
+        status
+      )
+      VALUES (
+        $1,
+        $2,
+        CURRENT_TIMESTAMP,
+        'started'
+      )
+      RETURNING
+        id,
+        member_id,
+        workout_id,
+        started_at,
+        status
+      `,
+      [memberId, workoutId]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Workout started successfully.",
+      workoutLog: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Start workout error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to start workout.",
+    });
+  }
+};
+
+export const completeWorkout = async (req, res) => {
+  try {
+    const { logId } = req.params;
+
+    if (!logId) {
+      return res.status(400).json({
+        success: false,
+        message: "Workout log ID is required.",
+      });
+    }
+
+    const memberResult = await pool.query(
+      `
+      SELECT id
+      FROM members
+      WHERE user_id = $1
+      `,
+      [req.user.id]
+    );
+
+    if (memberResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Member profile not found.",
+      });
+    }
+
+    const memberId = memberResult.rows[0].id;
+
+    const activeLogResult = await pool.query(
+      `
+      SELECT
+        wl.id,
+        wl.workout_id,
+        wl.started_at,
+        w.calories_burned AS estimated_calories
+      FROM workout_logs AS wl
+      LEFT JOIN workouts AS w
+        ON w.id = wl.workout_id
+      WHERE wl.id = $1
+        AND wl.member_id = $2
+        AND wl.status = 'started'
+      `,
+      [logId, memberId]
+    );
+
+    if (activeLogResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Active workout session not found.",
+      });
+    }
+
+    const activeLog = activeLogResult.rows[0];
+
+    const durationResult = await pool.query(
+      `
+      SELECT GREATEST(
+        1,
+        CEIL(
+          EXTRACT(
+            EPOCH FROM (
+              CURRENT_TIMESTAMP - $1::timestamp
+            )
+          ) / 60
+        )
+      )::int AS duration_minutes
+      `,
+      [activeLog.started_at]
+    );
+
+    const durationMinutes =
+      durationResult.rows[0].duration_minutes;
+
+    const caloriesBurned =
+      activeLog.estimated_calories || 0;
+
+    const result = await pool.query(
+      `
+      UPDATE workout_logs
+      SET
+        completed_at = CURRENT_TIMESTAMP,
+        duration_minutes = $1,
+        calories_burned = $2,
+        status = 'completed'
+      WHERE id = $3
+        AND member_id = $4
+      RETURNING
+        id,
+        member_id,
+        workout_id,
+        started_at,
+        completed_at,
+        duration_minutes,
+        calories_burned,
+        status
+      `,
+      [
+        durationMinutes,
+        caloriesBurned,
+        logId,
+        memberId,
+      ]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Workout completed successfully.",
+      workoutLog: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Complete workout error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to complete workout.",
+    });
+  }
+};
