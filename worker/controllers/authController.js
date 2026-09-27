@@ -1,32 +1,24 @@
 ﻿import bcrypt from "bcryptjs";
-import pool from "../config/db.js";
+import pool from "../db.js";
 import generateToken from "../utils/generateToken.js";
 
 export const register = async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const {
-      name,
-      email,
-      password,
-      phone,
-      dateOfBirth,
-      gender,
-      fitnessGoal,
-    } = req.body;
+    const { name, email, password, phone, dateOfBirth, gender, fitnessGoal } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, email and password are required.",
+        message: "Name, email and password are required."
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 6 characters long.",
+        message: "Password must be at least 6 characters long."
       });
     }
 
@@ -40,7 +32,7 @@ export const register = async (req, res) => {
     if (existingUser.rows.length > 0) {
       return res.status(409).json({
         success: false,
-        message: "An account with this email already exists.",
+        message: "An account with this email already exists."
       });
     }
 
@@ -56,7 +48,7 @@ export const register = async (req, res) => {
         passwordHash,
         phone || null,
         dateOfBirth || null,
-        gender || null,
+        gender || null
       ]
     );
 
@@ -75,7 +67,7 @@ export const register = async (req, res) => {
       success: true,
       message: "Account created successfully.",
       token,
-      user,
+      user
     });
   } catch (error) {
     try {
@@ -88,7 +80,7 @@ export const register = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Unable to create account.",
+      message: "Unable to create account."
     });
   } finally {
     await client.release();
@@ -102,7 +94,7 @@ export const login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required.",
+        message: "Email and password are required."
       });
     }
 
@@ -116,7 +108,7 @@ export const login = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password.",
+        message: "Invalid email or password."
       });
     }
 
@@ -125,7 +117,7 @@ export const login = async (req, res) => {
     if (!user.is_active) {
       return res.status(403).json({
         success: false,
-        message: "This account has been deactivated.",
+        message: "This account has been deactivated."
       });
     }
 
@@ -137,7 +129,7 @@ export const login = async (req, res) => {
     if (!passwordMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password.",
+        message: "Invalid email or password."
       });
     }
 
@@ -149,14 +141,14 @@ export const login = async (req, res) => {
       success: true,
       message: "Login successful.",
       token,
-      user,
+      user
     });
   } catch (error) {
     console.error("Login error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Unable to login.",
+      message: "Unable to login."
     });
   }
 };
@@ -171,20 +163,20 @@ export const getMe = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "User not found.",
+        message: "User not found."
       });
     }
 
     return res.status(200).json({
       success: true,
-      user: result.rows[0],
+      user: result.rows[0]
     });
   } catch (error) {
     console.error("Get current user error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Unable to fetch user.",
+      message: "Unable to fetch user."
     });
   }
 };

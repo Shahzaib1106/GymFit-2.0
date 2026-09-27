@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gymfit-2-0",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-27",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "c56aacfaec9e46879bc272ae516e0abe",
+      "localConnectionString":"postgresql://postgres:ynTeZgK5VPqPstAQ@db.ypfzzonnehexyzmagrtv.supabase.co:5432/postgres" 
+
+    }
+  ]
+}
