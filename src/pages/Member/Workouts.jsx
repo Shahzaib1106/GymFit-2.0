@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import {
@@ -12,27 +11,42 @@ import {
   Target,
 } from "lucide-react";
 
-import MemberSidebar from "../../components/MemberSidebar";
-import MemberHeader from "../../components/MemberHeader";
+import MemberSidebar from "../../components/MemberSidebar.jsx";
+import MemberHeader from "../../components/MemberHeader.jsx";
+
 import { useAuth } from "../../context/useAuth.jsx";
+
 import {
   getWorkouts,
   getWorkoutById,
+  startWorkout,
+  completeWorkout,
 } from "../../services/memberService.js";
 
 export default function Workouts() {
   const { token } = useAuth();
 
   const [mobileOpen, setMobileOpen] = useState(false);
+
   const [workouts, setWorkouts] = useState([]);
   const [selected, setSelected] = useState(0);
+
   const [workoutDetails, setWorkoutDetails] = useState(null);
+
   const [currentExercise, setCurrentExercise] = useState(0);
   const [completed, setCompleted] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
   const [error, setError] = useState("");
   const [detailsError, setDetailsError] = useState("");
+
+  const [activeLogId, setActiveLogId] = useState(null);
+  const [workoutStarted, setWorkoutStarted] = useState(false);
+  const [workoutCompleting, setWorkoutCompleting] = useState(false);
+  const [sessionMessage, setSessionMessage] = useState("");
+  const [sessionError, setSessionError] = useState("");
 
   useEffect(() => {
     const loadWorkouts = async () => {
@@ -50,6 +64,7 @@ export default function Workouts() {
         setWorkouts(data.workouts || []);
       } catch (err) {
         console.error("Failed to load workouts:", err);
+
         setError(
           err.message || "Failed to load workouts."
         );
@@ -74,6 +89,8 @@ export default function Workouts() {
       try {
         setDetailsLoading(true);
         setDetailsError("");
+        setSessionError("");
+        setSessionMessage("");
         setWorkoutDetails(null);
 
         const data = await getWorkoutById(
@@ -104,6 +121,82 @@ export default function Workouts() {
 
   const selectWorkout = (index) => {
     setSelected(index);
+    setActiveLogId(null);
+    setWorkoutStarted(false);
+    setSessionMessage("");
+    setSessionError("");
+  };
+
+  const handleStartWorkout = async () => {
+    if (!token || !workoutDetails?.id) {
+      return;
+    }
+
+    try {
+      setSessionError("");
+      setSessionMessage("");
+
+      const data = await startWorkout(
+        token,
+        workoutDetails.id
+      );
+
+      setActiveLogId(data.workoutLog.id);
+      setWorkoutStarted(true);
+
+      setSessionMessage(
+        "Workout started. Let's get to work!"
+      );
+    } catch (err) {
+      console.error("Failed to start workout:", err);
+
+      if (err.message === "You already have an active workout.") {
+        setSessionError(err.message);
+
+        if (err.logId) {
+          setActiveLogId(err.logId);
+          setWorkoutStarted(true);
+        }
+      } else {
+        setSessionError(
+          err.message || "Failed to start workout."
+        );
+      }
+    }
+  };
+
+  const handleCompleteWorkout = async () => {
+    if (!token || !activeLogId) {
+      return;
+    }
+
+    try {
+      setWorkoutCompleting(true);
+      setSessionError("");
+      setSessionMessage("");
+
+      const data = await completeWorkout(
+        token,
+        activeLogId
+      );
+
+      setWorkoutStarted(false);
+
+      setSessionMessage(
+        `Workout completed! ${data.workoutLog.duration_minutes} min · ${data.workoutLog.calories_burned} kcal`
+      );
+    } catch (err) {
+      console.error(
+        "Failed to complete workout:",
+        err
+      );
+
+      setSessionError(
+        err.message || "Failed to complete workout."
+      );
+    } finally {
+      setWorkoutCompleting(false);
+    }
   };
 
   const toggleExercise = (exerciseId) => {
@@ -119,6 +212,8 @@ export default function Workouts() {
   const resetWorkout = () => {
     setCompleted([]);
     setCurrentExercise(0);
+    setSessionMessage("");
+    setSessionError("");
   };
 
   const goNext = () => {
@@ -180,11 +275,11 @@ export default function Workouts() {
 
       <div className="lg:pl-72">
         <MemberHeader
-          onMenu={() => setMobileOpen(true)}
+          onMenuClick={() => setMobileOpen(true)}
         />
 
         <main className="mx-auto max-w-[1600px] px-5 py-7 lg:px-8">
-          {/* Page Header */}
+          {/* PAGE HEADER */}
           <div className="mb-8">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
               Training
@@ -195,12 +290,12 @@ export default function Workouts() {
             </h2>
 
             <p className="mt-2 text-sm text-gray-500">
-              Choose a workout and follow every
-              exercise step by step.
+              Choose a workout and follow every exercise
+              step by step.
             </p>
           </div>
 
-          {/* Loading */}
+          {/* LOADING */}
           {loading && (
             <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-12 text-center">
               <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
@@ -211,7 +306,7 @@ export default function Workouts() {
             </div>
           )}
 
-          {/* Error */}
+          {/* ERROR */}
           {!loading && error && (
             <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-6">
               <p className="text-sm font-semibold text-red-400">
@@ -220,7 +315,7 @@ export default function Workouts() {
             </div>
           )}
 
-          {/* Empty */}
+          {/* EMPTY */}
           {!loading &&
             !error &&
             workouts.length === 0 && (
@@ -235,18 +330,18 @@ export default function Workouts() {
                 </p>
 
                 <p className="mt-2 text-sm text-gray-600">
-                  There are no active workouts in
-                  the database.
+                  There are no active workouts in the
+                  database.
                 </p>
               </div>
             )}
 
-          {/* Main Workout Area */}
+          {/* MAIN WORKOUT AREA */}
           {!loading &&
             !error &&
             workouts.length > 0 && (
               <div className="grid gap-6 xl:grid-cols-3">
-                {/* Workout Plans */}
+                {/* WORKOUT PLANS */}
                 <section className="space-y-4">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
@@ -304,15 +399,13 @@ export default function Workouts() {
                       <div className="mt-5 flex gap-4 text-xs text-gray-500">
                         <span className="flex items-center gap-1.5">
                           <Clock size={14} />
-                          {item.duration_minutes ??
-                            0}{" "}
+                          {item.duration_minutes ?? 0}{" "}
                           min
                         </span>
 
                         <span className="flex items-center gap-1.5">
                           <Flame size={14} />
-                          {item.calories_burned ??
-                            0}{" "}
+                          {item.calories_burned ?? 0}{" "}
                           kcal
                         </span>
                       </div>
@@ -320,7 +413,7 @@ export default function Workouts() {
                   ))}
                 </section>
 
-                {/* Workout Details */}
+                {/* WORKOUT DETAILS */}
                 <section className="xl:col-span-2">
                   {detailsLoading && (
                     <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-12 text-center">
@@ -345,7 +438,7 @@ export default function Workouts() {
                     !detailsError &&
                     workout && (
                       <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
-                        {/* Workout Header */}
+                        {/* WORKOUT HEADER */}
                         <div className="border-b border-white/10 p-6 sm:p-7">
                           <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
                             <div>
@@ -392,21 +485,73 @@ export default function Workouts() {
                               </div>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={resetWorkout}
-                              className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-xs font-bold text-gray-400 transition hover:border-orange-500/30 hover:text-orange-500"
-                            >
-                              <RotateCcw size={15} />
-                              Reset
-                            </button>
+                            <div className="flex gap-2">
+                              {!workoutStarted ? (
+                                <button
+                                  type="button"
+                                  onClick={
+                                    handleStartWorkout
+                                  }
+                                  className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-xs font-bold text-black transition hover:bg-orange-400"
+                                >
+                                  <Play
+                                    size={15}
+                                    fill="currentColor"
+                                  />
+                                  Start Workout
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={
+                                    handleCompleteWorkout
+                                  }
+                                  disabled={
+                                    workoutCompleting
+                                  }
+                                  className="flex items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3 text-xs font-bold text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <Check size={15} />
+
+                                  {workoutCompleting
+                                    ? "Completing..."
+                                    : "Complete Workout"}
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={resetWorkout}
+                                className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-xs font-bold text-gray-400 transition hover:border-orange-500/30 hover:text-orange-500"
+                              >
+                                <RotateCcw size={15} />
+                                Reset
+                              </button>
+                            </div>
                           </div>
 
-                          {/* Progress */}
+                          {/* SESSION STATUS */}
+                          {sessionMessage && (
+                            <div className="mt-5 rounded-xl border border-green-500/20 bg-green-500/[0.05] px-4 py-3">
+                              <p className="text-sm font-semibold text-green-400">
+                                {sessionMessage}
+                              </p>
+                            </div>
+                          )}
+
+                          {sessionError && (
+                            <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/[0.05] px-4 py-3">
+                              <p className="text-sm font-semibold text-red-400">
+                                {sessionError}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* PROGRESS */}
                           <div className="mt-7">
                             <div className="mb-2 flex items-center justify-between text-xs">
                               <span className="font-semibold text-gray-500">
-                                Workout Progress
+                                Exercise Progress
                               </span>
 
                               <span className="font-bold text-orange-500">
@@ -425,17 +570,15 @@ export default function Workouts() {
                           </div>
                         </div>
 
-                        {/* Exercise */}
+                        {/* EXERCISE */}
                         {exercise ? (
                           <div className="p-6 sm:p-7">
                             <div className="mb-6 flex items-center justify-between">
                               <div>
                                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
                                   Exercise{" "}
-                                  {currentExercise +
-                                    1}{" "}
-                                  of{" "}
-                                  {exercises.length}
+                                  {currentExercise + 1}{" "}
+                                  of {exercises.length}
                                 </p>
 
                                 <h4 className="mt-2 text-xl font-black">
@@ -450,7 +593,7 @@ export default function Workouts() {
                               )}
                             </div>
 
-                            {/* Exercise Stats */}
+                            {/* EXERCISE STATS */}
                             <div className="grid gap-3 sm:grid-cols-4">
                               <div className="rounded-xl border border-white/5 bg-black/20 p-4">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
@@ -497,7 +640,7 @@ export default function Workouts() {
                               </div>
                             </div>
 
-                            {/* Instructions */}
+                            {/* INSTRUCTIONS */}
                             {exercise.instructions && (
                               <div className="mt-6 rounded-xl border border-white/5 bg-black/20 p-5">
                                 <div className="flex items-center gap-2">
@@ -517,7 +660,7 @@ export default function Workouts() {
                               </div>
                             )}
 
-                            {/* Demo */}
+                            {/* DEMO */}
                             {exercise.video_url && (
                               <button
                                 type="button"
@@ -536,7 +679,7 @@ export default function Workouts() {
                               </button>
                             )}
 
-                            {/* Controls */}
+                            {/* CONTROLS */}
                             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                               <button
                                 type="button"
@@ -583,7 +726,7 @@ export default function Workouts() {
                               </button>
                             </div>
 
-                            {/* Exercise Plan */}
+                            {/* EXERCISE PLAN */}
                             <div className="mt-8">
                               <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
                                 Exercise Plan
@@ -661,7 +804,7 @@ export default function Workouts() {
                               </div>
                             </div>
 
-                            {/* Completion */}
+                            {/* COMPLETION */}
                             {progress === 100 && (
                               <div className="mt-6 rounded-2xl border border-green-500/20 bg-green-500/[0.05] p-6 text-center">
                                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-400">
@@ -669,23 +812,46 @@ export default function Workouts() {
                                 </div>
 
                                 <h4 className="mt-4 font-black">
-                                  Workout Completed
+                                  All Exercises Completed
                                 </h4>
 
                                 <p className="mt-2 text-sm text-gray-500">
-                                  Great work. You
-                                  completed every
-                                  exercise in this
-                                  workout.
+                                  You completed every
+                                  exercise in this workout.
+                                  Now complete the workout
+                                  session to save it to your
+                                  history.
                                 </p>
 
-                                <button
-                                  type="button"
-                                  onClick={resetWorkout}
-                                  className="mt-5 rounded-xl bg-orange-500 px-5 py-3 text-xs font-bold text-black hover:bg-orange-400"
-                                >
-                                  Start Again
-                                </button>
+                                {!workoutStarted &&
+                                  !sessionMessage && (
+                                    <button
+                                      type="button"
+                                      onClick={
+                                        handleStartWorkout
+                                      }
+                                      className="mt-5 rounded-xl bg-orange-500 px-5 py-3 text-xs font-bold text-black hover:bg-orange-400"
+                                    >
+                                      Start Workout Session
+                                    </button>
+                                  )}
+
+                                {workoutStarted && (
+                                  <button
+                                    type="button"
+                                    onClick={
+                                      handleCompleteWorkout
+                                    }
+                                    disabled={
+                                      workoutCompleting
+                                    }
+                                    className="mt-5 rounded-xl bg-green-500 px-5 py-3 text-xs font-bold text-black hover:bg-green-400 disabled:opacity-50"
+                                  >
+                                    {workoutCompleting
+                                      ? "Completing..."
+                                      : "Complete Workout"}
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>

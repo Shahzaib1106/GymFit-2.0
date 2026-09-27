@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
@@ -7,7 +8,10 @@ export default function ThemeToggle() {
   });
 
   useEffect(() => {
-    document.documentElement.classList.toggle("light", lightMode);
+    document.documentElement.classList.toggle(
+      "light",
+      lightMode
+    );
 
     localStorage.setItem(
       "gymfit_theme",
@@ -18,7 +22,9 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
-      onClick={() => setLightMode((current) => !current)}
+      onClick={() =>
+        setLightMode((current) => !current)
+      }
       aria-label={
         lightMode
           ? "Switch to dark mode"
@@ -45,3 +51,4 @@ export default function ThemeToggle() {
     </button>
   );
 }
+

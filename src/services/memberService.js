@@ -10,7 +10,6 @@ const request = async (url, options = {}) => {
       ...(options.headers || {}),
     },
   });
-
   const data = await response.json();
 
   if (!response.ok) {
@@ -20,6 +19,15 @@ const request = async (url, options = {}) => {
   }
 
   return data;
+};
+
+export const getDashboard = async (token) => {
+  return request(`${MEMBER_API_URL}/dashboard`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 };
 
 export const getMyProfile = async (token) => {

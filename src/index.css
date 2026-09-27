@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,14 +10,18 @@
 :root {
   --gf-bg: #050505;
   --gf-bg-secondary: #090909;
+
   --gf-surface: rgba(255, 255, 255, 0.025);
   --gf-surface-hover: rgba(255, 255, 255, 0.045);
+
   --gf-border: rgba(255, 255, 255, 0.1);
   --gf-border-soft: rgba(255, 255, 255, 0.05);
+
   --gf-text: #ffffff;
   --gf-text-secondary: #9ca3af;
   --gf-text-muted: #6b7280;
   --gf-text-faint: #4b5563;
+
   --gf-orange: #f97316;
   --gf-orange-dark: #ea580c;
   --gf-green: #22c55e;
@@ -29,21 +34,29 @@ html {
 html.light {
   --gf-bg: #f7f7f8;
   --gf-bg-secondary: #ffffff;
+
   --gf-surface: rgba(0, 0, 0, 0.025);
   --gf-surface-hover: rgba(0, 0, 0, 0.05);
+
   --gf-border: rgba(0, 0, 0, 0.1);
   --gf-border-soft: rgba(0, 0, 0, 0.06);
+
   --gf-text: #111111;
   --gf-text-secondary: #52525b;
   --gf-text-muted: #71717a;
   --gf-text-faint: #a1a1aa;
 }
 
+/* =========================================================
+   BASE
+========================================================= */
+
 body {
   margin: 0;
   min-width: 320px;
   background: var(--gf-bg);
   color: var(--gf-text);
+
   font-family:
     Inter,
     ui-sans-serif,
@@ -52,6 +65,7 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+
   transition:
     background-color 0.25s ease,
     color 0.25s ease;
@@ -104,27 +118,49 @@ a {
 }
 
 /* =========================================================
-   GLOBAL LIGHT MODE OVERRIDES
-   Existing pages use dark Tailwind utility classes.
-   These overrides make those existing surfaces readable
-   when light mode is active.
+   LIGHT MODE - DARK BACKGROUND COMPATIBILITY
 ========================================================= */
 
 html.light .bg-\[\#050505\] {
   background-color: var(--gf-bg) !important;
 }
 
-html.light .bg-black,
+html.light .bg-\[\#080808\] {
+  background-color: var(--gf-bg-secondary) !important;
+}
+
+html.light .bg-\[\#090909\] {
+  background-color: var(--gf-bg-secondary) !important;
+}
+
+html.light .bg-black {
+  background-color: #ffffff !important;
+}
+
 html.light .bg-\[\#000\] {
   background-color: #ffffff !important;
 }
 
-html.light .bg-black\/30 {
+/* Dark translucent surfaces */
+
+html.light .bg-black\/20 {
   background-color: rgba(0, 0, 0, 0.025) !important;
 }
 
+html.light .bg-black\/30 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
 html.light .bg-white\/5 {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
 }
 
 html.light .bg-white\/\[0\.025\] {
@@ -139,6 +175,10 @@ html.light .bg-white\/\[0\.04\] {
   background-color: rgba(0, 0, 0, 0.04) !important;
 }
 
+/* =========================================================
+   LIGHT MODE - BORDERS
+========================================================= */
+
 html.light .border-white\/10 {
   border-color: rgba(0, 0, 0, 0.1) !important;
 }
@@ -147,9 +187,13 @@ html.light .border-white\/5 {
   border-color: rgba(0, 0, 0, 0.06) !important;
 }
 
-html.light .text-white {
-  color: #111111 !important;
+html.light .border-white\/20 {
+  border-color: rgba(0, 0, 0, 0.15) !important;
 }
+
+/* =========================================================
+   LIGHT MODE - TEXT
+========================================================= */
 
 html.light .text-gray-300 {
   color: #3f3f46 !important;
@@ -171,6 +215,33 @@ html.light .text-gray-700 {
   color: #52525b !important;
 }
 
+html.light .text-gray-800 {
+  color: #27272a !important;
+}
+
+/* White text becomes dark in light mode */
+
+html.light .text-white {
+  color: #111111 !important;
+}
+
+/* Keep white text on orange buttons */
+
+html.light .bg-orange-500.text-white,
+html.light .bg-orange-600.text-white,
+html.light a.bg-orange-500,
+html.light a.bg-orange-600 {
+  color: #ffffff !important;
+}
+
+html.light .bg-orange-500 {
+  color: #ffffff;
+}
+
+/* =========================================================
+   LIGHT MODE - FORM ELEMENTS
+========================================================= */
+
 html.light input,
 html.light textarea,
 html.light select {
@@ -180,12 +251,13 @@ html.light select {
 }
 
 html.light input::placeholder,
-html.light textarea::placeholder {
+html.light textarea::placeholder,
+html.light select::placeholder {
   color: #a1a1aa;
 }
 
 /* =========================================================
-   NAVIGATION / GLASS EFFECT
+   NAVIGATION / GLASS
 ========================================================= */
 
 .gf-glass {
@@ -196,12 +268,12 @@ html.light textarea::placeholder {
 }
 
 html.light .gf-glass {
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.88);
   border-bottom-color: rgba(0, 0, 0, 0.08);
 }
 
 /* =========================================================
-   THEME TRANSITIONS
+   GLOBAL THEME TRANSITIONS
 ========================================================= */
 
 body,
@@ -222,7 +294,8 @@ div {
     color 0.2s ease;
 }
 
-/* Don't animate bars/progress elements */
+/* Keep progress animation smooth */
+
 div[class*="bg-orange-500"] {
   transition:
     width 0.4s ease,
@@ -230,7 +303,7 @@ div[class*="bg-orange-500"] {
 }
 
 /* =========================================================
-   LANDING PAGE POLISH
+   LANDING PAGE
 ========================================================= */
 
 .gf-section {
@@ -253,6 +326,7 @@ div[class*="bg-orange-500"] {
     #d4d4d8 45%,
     #f97316 100%
   );
+
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -265,13 +339,14 @@ html.light .gf-gradient-text {
     #3f3f46 45%,
     #ea580c 100%
   );
+
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 /* =========================================================
-   FOCUS STATES
+   FOCUS
 ========================================================= */
 
 button:focus-visible,

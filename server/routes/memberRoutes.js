@@ -1,10 +1,31 @@
+
 import express from "express";
 
-import { getMyProfile } from "../controllers/memberController.js";
+import {
+  getMyProfile,
+  getDashboard,
+} from "../controllers/memberController.js";
+
 import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/profile", authMiddleware, getMyProfile);
+/*
+GET /api/member/profile
+*/
+router.get(
+  "/profile",
+  authMiddleware,
+  getMyProfile
+);
+
+/*
+GET /api/member/dashboard
+*/
+router.get(
+  "/dashboard",
+  authMiddleware,
+  getDashboard
+);
 
 export default router;
