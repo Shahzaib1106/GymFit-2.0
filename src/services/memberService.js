@@ -1,4 +1,3 @@
-
 const MEMBER_API_URL = "http://localhost:5000/api/member";
 const WORKOUT_API_URL = "http://localhost:5000/api/workouts";
 
@@ -10,24 +9,22 @@ const request = async (url, options = {}) => {
       ...(options.headers || {}),
     },
   });
+
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(
+    const error = new Error(
       data.message || "Something went wrong."
     );
+
+    if (data.logId) {
+      error.logId = data.logId;
+    }
+
+    throw error;
   }
 
   return data;
-};
-
-export const getDashboard = async (token) => {
-  return request(`${MEMBER_API_URL}/dashboard`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
 };
 
 export const getMyProfile = async (token) => {
@@ -39,6 +36,39 @@ export const getMyProfile = async (token) => {
   });
 };
 
+export const getDashboard = async (token) => {
+  return request(`${MEMBER_API_URL}/dashboard`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const startWorkout = async (token, workoutId) => {
+  return request(`${MEMBER_API_URL}/workouts/start`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      workoutId,
+    }),
+  });
+};
+
+export const completeWorkout = async (token, logId) => {
+  return request(
+    `${MEMBER_API_URL}/workouts/${logId}/complete`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+};
+
 export const getWorkouts = async (token) => {
   return request(WORKOUT_API_URL, {
     method: "GET",
@@ -48,7 +78,10 @@ export const getWorkouts = async (token) => {
   });
 };
 
-export const getWorkoutById = async (token, workoutId) => {
+export const getWorkoutById = async (
+  token,
+  workoutId
+) => {
   return request(`${WORKOUT_API_URL}/${workoutId}`, {
     method: "GET",
     headers: {
@@ -78,7 +111,9 @@ export const getExercises = async (
   const query = params.toString();
 
   return request(
-    `${WORKOUT_API_URL}/exercises${query ? `?${query}` : ""}`,
+    `${WORKOUT_API_URL}/exercises${
+      query ? `?${query}` : ""
+    }`,
     {
       method: "GET",
       headers: {
