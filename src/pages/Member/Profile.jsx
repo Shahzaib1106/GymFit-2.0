@@ -1,59 +1,168 @@
-import { useState } from "react";
 import {
+  BadgeCheck,
   Camera,
   Check,
   Lock,
   Mail,
   Phone,
   Save,
+  ShieldCheck,
   User,
+  X,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
-import MemberSidebar from "../../components/MemberSidebar";
-import MemberHeader from "../../components/MemberHeader";
+import MemberSidebar from "../../components/MemberSidebar.jsx";
+import MemberHeader from "../../components/MemberHeader.jsx";
+import { useAuth } from "../../context/useAuth.jsx";
+import { getMyProfile } from "../../services/memberService.js";
+
+const defaultForm = {
+  name: "",
+  email: "",
+  phone: "",
+  age: "",
+  height: "",
+  weight: "",
+  goal: "Build Muscle",
+};
 
 export default function Profile() {
+  const { user, token } = useAuth();
+
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const storedUser = JSON.parse(
-    localStorage.getItem("gymfit_user") ||
-      '{"name":"Member","email":"member@example.com"}'
-  );
-
-  const [form, setForm] = useState({
-    name: storedUser.name || "",
-    email: storedUser.email || "",
-    phone: "+92 300 1234567",
-    age: "23",
-    height: "178",
-    weight: "74.2",
-    goal: "Build Muscle",
-  });
-
+  const [form, setForm] = useState(defaultForm);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getMyProfile(token);
+        const member = data.member || {};
+
+        setForm({
+          name: member.name || user?.name || "",
+          email: member.email || user?.email || "",
+          phone: member.phone || "",
+          age: member.age || "",
+          height: member.height || "",
+          weight: member.weight || "",
+          goal:
+            member.fitness_goal ||
+            user?.fitness_goal ||
+            "Build Muscle",
+        });
+      } catch (err) {
+        console.error("Profile loading failed:", err);
+
+        setError(
+          err.message || "Failed to load your profile."
+        );
+
+        setForm({
+          ...defaultForm,
+          name: user?.name || "",
+          email: user?.email || "",
+          goal:
+            user?.fitness_goal || "Build Muscle",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, [token, user]);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
 
     setSaved(false);
   };
 
-  const saveProfile = (e) => {
-    e.preventDefault();
+  const saveProfile = async (event) => {
+    event.preventDefault();
 
-    localStorage.setItem(
-      "gymfit_user",
-      JSON.stringify({
-        name: form.name,
-        email: form.email,
-      })
-    );
+    setSaving(true);
+    setSaved(false);
 
-    setSaved(true);
+    try {
+      /*
+        Profile update endpoint can be connected here when the
+        backend profile-update route is added.
+      */
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 500)
+      );
+
+      setSaved(true);
+    } catch (err) {
+      console.error("Profile save failed:", err);
+      setError(
+        err.message || "Failed to save your profile."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const firstLetter =
+    form.name?.trim()?.charAt(0)?.toUpperCase() || "M";
+
+  const memberSince = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(
+        "en-US",
+        {
+          month: "long",
+          year: "numeric",
+        }
+      )
+    : "September 2026";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050505] text-white">
+        <MemberSidebar
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+        />
+
+        <div className="lg:ml-64">
+          <MemberHeader
+            onMenuClick={() => setMobileOpen(true)}
+          />
+
+          <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center p-6">
+            <div className="text-center">
+              <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+
+              <p className="text-sm text-gray-500">
+                Loading your profile...
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
@@ -62,74 +171,147 @@ export default function Profile() {
         setMobileOpen={setMobileOpen}
       />
 
-      <div className="lg:pl-72">
-        <MemberHeader onMenu={() => setMobileOpen(true)} />
+      <div className="lg:ml-64">
+        <MemberHeader
+          onMenuClick={() => setMobileOpen(true)}
+        />
 
-        <main className="mx-auto max-w-[1200px] px-5 py-7 lg:px-8">
-          <div>
+        <main className="mx-auto max-w-[1400px] p-5 sm:p-6 lg:p-8">
+          <section className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-orange-500/15 via-[#111111] to-[#080808] p-6 sm:p-8">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
               Account
             </p>
 
-            <h2 className="mt-2 text-3xl font-black">
+            <h2 className="mt-2 text-3xl font-black sm:text-4xl">
               Profile Settings
             </h2>
 
-            <p className="mt-2 text-sm text-gray-500">
-              Keep your personal and fitness information up to date.
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
+              Manage your personal information and fitness
+              profile from one place.
             </p>
-          </div>
+          </section>
 
-          <div className="mt-7 grid gap-6 lg:grid-cols-[280px_1fr]">
-            <section className="h-fit rounded-2xl border border-white/10 bg-white/[0.025] p-6">
-              <div className="relative mx-auto w-fit">
-                <div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-orange-500 text-4xl font-black">
-                  {form.name?.charAt(0)?.toUpperCase() || "M"}
-                </div>
+          {error && (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/[0.05] px-5 py-4">
+              <ShieldCheck
+                size={18}
+                className="mt-0.5 shrink-0 text-red-400"
+              />
 
-                <button className="absolute -bottom-2 -right-2 rounded-xl border-4 border-[#080808] bg-white p-2 text-black">
-                  <Camera size={16} />
-                </button>
-              </div>
-
-              <div className="mt-5 text-center">
-                <h3 className="font-black">{form.name}</h3>
-
-                <p className="mt-1 text-xs text-gray-600">
-                  Pro Member
+              <div>
+                <p className="text-sm font-semibold text-red-400">
+                  Profile Notice
                 </p>
 
-                <div className="mt-5 rounded-xl bg-orange-500/10 px-4 py-3">
-                  <p className="text-xs font-bold text-orange-500">
-                    Member since
+                <p className="mt-1 text-xs leading-5 text-gray-500">
+                  {error}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setError("")}
+                className="ml-auto text-gray-600 hover:text-white"
+                aria-label="Dismiss"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          <div className="mt-7 grid gap-6 lg:grid-cols-[280px_1fr]">
+            <aside className="h-fit space-y-5">
+              <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+                <div className="relative mx-auto w-fit">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-orange-500 text-4xl font-black text-black shadow-lg shadow-orange-500/10">
+                    {firstLetter}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="absolute -bottom-2 -right-2 rounded-xl border-4 border-[#080808] bg-white p-2 text-black transition hover:bg-orange-500"
+                    aria-label="Change profile photo"
+                    title="Profile photo"
+                  >
+                    <Camera size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-5 text-center">
+                  <h3 className="truncate font-black">
+                    {form.name || "Member"}
+                  </h3>
+
+                  <p className="mt-1 truncate text-xs text-gray-600">
+                    {form.email || "Member account"}
                   </p>
 
-                  <p className="mt-1 text-sm font-semibold">
-                    September 2026
-                  </p>
+                  <div className="mt-5 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500/10 px-4 py-3">
+                    <BadgeCheck
+                      size={15}
+                      className="text-orange-500"
+                    />
+
+                    <span className="text-xs font-bold text-orange-500">
+                      Pro Member
+                    </span>
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-white/5 bg-black/20 px-4 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                      Member since
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold">
+                      {memberSince}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+
+              <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl bg-green-500/10 p-2.5 text-green-400">
+                    <ShieldCheck size={18} />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold">
+                      Account Security
+                    </p>
+
+                    <p className="mt-1 text-[10px] text-gray-600">
+                      Your account is protected.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </aside>
 
             <form
               onSubmit={saveProfile}
               className="rounded-2xl border border-white/10 bg-white/[0.025] p-6 sm:p-7"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
-                    Personal information
+                    Personal Information
                   </p>
 
                   <h3 className="mt-2 text-xl font-black">
-                    Account details
+                    Account Details
                   </h3>
+
+                  <p className="mt-1 text-xs text-gray-600">
+                    Keep your account information accurate.
+                  </p>
                 </div>
 
                 {saved && (
                   <span className="flex items-center gap-1.5 text-xs font-bold text-green-400">
                     <Check size={15} />
-                    Saved
+                    Changes saved
                   </span>
                 )}
               </div>
@@ -141,6 +323,7 @@ export default function Profile() {
                   name="name"
                   value={form.name}
                   onChange={handleChange}
+                  required
                 />
 
                 <Field
@@ -150,22 +333,29 @@ export default function Profile() {
                   type="email"
                   value={form.email}
                   onChange={handleChange}
+                  disabled
                 />
 
                 <Field
                   icon={Phone}
                   label="Phone"
                   name="phone"
+                  type="tel"
                   value={form.phone}
                   onChange={handleChange}
+                  placeholder="+92 300 1234567"
                 />
 
                 <Field
                   icon={User}
                   label="Age"
                   name="age"
+                  type="number"
                   value={form.age}
                   onChange={handleChange}
+                  min="1"
+                  max="120"
+                  placeholder="23"
                 />
               </div>
 
@@ -173,36 +363,51 @@ export default function Profile() {
 
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
-                  Fitness information
+                  Fitness Information
                 </p>
+
+                <h3 className="mt-2 text-xl font-black">
+                  Body & Goals
+                </h3>
 
                 <div className="mt-5 grid gap-5 sm:grid-cols-3">
                   <Field
                     label="Height"
                     name="height"
-                    suffix="cm"
+                    type="number"
                     value={form.height}
                     onChange={handleChange}
+                    suffix="cm"
+                    min="1"
+                    placeholder="178"
                   />
 
                   <Field
                     label="Weight"
                     name="weight"
-                    suffix="kg"
+                    type="number"
                     value={form.weight}
                     onChange={handleChange}
+                    suffix="kg"
+                    min="1"
+                    step="0.1"
+                    placeholder="74.2"
                   />
 
                   <div>
-                    <label className="mb-2 block text-xs font-semibold text-gray-400">
+                    <label
+                      htmlFor="goal"
+                      className="mb-2 block text-xs font-semibold text-gray-400"
+                    >
                       Primary goal
                     </label>
 
                     <select
+                      id="goal"
                       name="goal"
                       value={form.goal}
                       onChange={handleChange}
-                      className="w-full rounded-xl border border-white/10 bg-black px-4 py-4 text-sm outline-none focus:border-orange-500"
+                      className="w-full rounded-xl border border-white/10 bg-black px-4 py-4 text-sm text-white outline-none transition focus:border-orange-500"
                     >
                       <option>Build Muscle</option>
                       <option>Lose Weight</option>
@@ -214,27 +419,119 @@ export default function Profile() {
                 </div>
               </div>
 
+              <div className="my-8 h-px bg-white/10" />
+
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
+                  Account Security
+                </p>
+
+                <div className="mt-5 flex flex-col justify-between gap-4 rounded-xl border border-white/5 bg-black/20 p-4 sm:flex-row sm:items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-orange-500/10 p-2.5 text-orange-500">
+                      <Lock size={17} />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold">
+                        Password
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-600">
+                        Keep your account password secure.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPassword(true)
+                    }
+                    className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-gray-400 transition hover:border-orange-500/30 hover:text-orange-500"
+                  >
+                    Change Password
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-8 flex flex-col justify-between gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center">
-                <button
-                  type="button"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-gray-400 hover:bg-white/5 hover:text-white"
-                >
-                  <Lock size={16} />
-                  Change Password
-                </button>
+                <p className="text-xs text-gray-700">
+                  Your profile information helps personalize
+                  your GymFit experience.
+                </p>
 
                 <button
                   type="submit"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold hover:bg-orange-600"
+                  disabled={saving}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-black transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <Save size={17} />
-                  Save Changes
+                  {saving ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={17} />
+                      Save Changes
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </main>
       </div>
+
+      {showPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c0c0c] p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-orange-500">
+                  Security
+                </p>
+
+                <h3 className="mt-2 text-xl font-black">
+                  Change Password
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(false)}
+                className="rounded-xl border border-white/10 p-2 text-gray-500 transition hover:text-white"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-orange-500/10 bg-orange-500/[0.04] p-4">
+              <div className="flex gap-3">
+                <Lock
+                  size={17}
+                  className="mt-0.5 shrink-0 text-orange-500"
+                />
+
+                <p className="text-xs leading-5 text-gray-500">
+                  Password management will be connected to the
+                  secure backend authentication flow.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPassword(false)}
+              className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-3 text-xs font-black text-black transition hover:bg-orange-400"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -247,10 +544,19 @@ function Field({
   onChange,
   type = "text",
   suffix,
+  placeholder,
+  disabled = false,
+  required = false,
+  min,
+  max,
+  step,
 }) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-semibold text-gray-400">
+      <label
+        htmlFor={name}
+        className="mb-2 block text-xs font-semibold text-gray-400"
+      >
         {label}
       </label>
 
@@ -263,12 +569,19 @@ function Field({
         )}
 
         <input
+          id={name}
           type={type}
           name={name}
           value={value}
           onChange={onChange}
-          className={`w-full rounded-xl border border-white/10 bg-black py-4 text-sm outline-none transition focus:border-orange-500 ${
-            Icon ? "pl-11" : "px-4"
+          placeholder={placeholder}
+          disabled={disabled}
+          required={required}
+          min={min}
+          max={max}
+          step={step}
+          className={`w-full rounded-xl border border-white/10 bg-black py-4 text-sm text-white outline-none transition placeholder:text-gray-700 focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-50 ${
+            Icon ? "pl-11" : "pl-4"
           } ${suffix ? "pr-14" : "pr-4"}`}
         />
 

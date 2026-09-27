@@ -8,6 +8,7 @@ import pool from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import memberRoutes from "./routes/memberRoutes.js";
 import workoutRoutes from "./routes/workoutRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.get("/api/health", async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/member", memberRoutes);
 app.use("/api/workouts", workoutRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -84,6 +86,7 @@ const startServer = async () => {
       console.log(`  Auth:    http://localhost:${PORT}/api/auth`);
       console.log(`  Member:  http://localhost:${PORT}/api/member`);
       console.log(`  Workout: http://localhost:${PORT}/api/workouts`);
+      console.log(`  Admin:   http://localhost:${PORT}/api/admin`);
       console.log("========================================");
     });
   } catch (error) {

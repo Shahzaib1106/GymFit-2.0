@@ -138,16 +138,29 @@ export const getDashboard = async (req, res) => {
     const weeklyResult = await pool.query(
       `
       SELECT
-        DATE(completed_at) AS date,
-        COUNT(*)::int AS workouts,
-        COALESCE(SUM(calories_burned), 0)::int AS calories,
-        COALESCE(SUM(duration_minutes), 0)::int AS minutes
-      FROM workout_logs
-      WHERE member_id = $1
-        AND status = 'completed'
-        AND completed_at >= CURRENT_DATE - INTERVAL '6 days'
-      GROUP BY DATE(completed_at)
-      ORDER BY date ASC
+        days.date,
+        COALESCE(activity.workouts, 0)::int AS workouts,
+        COALESCE(activity.calories, 0)::int AS calories,
+        COALESCE(activity.minutes, 0)::int AS minutes
+      FROM (
+        SELECT
+          CURRENT_DATE - series.day AS date
+        FROM generate_series(0, 6) AS series(day)
+      ) AS days
+      LEFT JOIN (
+        SELECT
+          DATE(completed_at) AS date,
+          COUNT(*)::int AS workouts,
+          COALESCE(SUM(calories_burned), 0)::int AS calories,
+          COALESCE(SUM(duration_minutes), 0)::int AS minutes
+        FROM workout_logs
+        WHERE member_id = $1
+          AND status = 'completed'
+          AND completed_at >= CURRENT_DATE - INTERVAL '6 days'
+        GROUP BY DATE(completed_at)
+      ) AS activity
+        ON activity.date = days.date
+      ORDER BY days.date ASC
       `,
       [member.member_id]
     );

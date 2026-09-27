@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Activity,
@@ -8,6 +8,7 @@ import {
   Clock3,
   Dumbbell,
   Flame,
+  RefreshCw,
   Target,
   TrendingUp,
 } from "lucide-react";
@@ -16,49 +17,61 @@ import { Link } from "react-router-dom";
 
 import MemberSidebar from "../../components/MemberSidebar.jsx";
 import MemberHeader from "../../components/MemberHeader.jsx";
-
 import { useAuth } from "../../context/useAuth.jsx";
 import { getDashboard } from "../../services/memberService.js";
 
 function MemberDashboard() {
   const { user, token } = useAuth();
 
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const loadDashboard = async () => {
+  const loadDashboard = useCallback(
+    async (isRefresh = false) => {
       if (!token) {
         setLoading(false);
         return;
       }
 
       try {
-        setLoading(true);
+        if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+
         setError("");
 
         const data = await getDashboard(token);
-
         setDashboard(data.dashboard);
       } catch (err) {
         console.error("Dashboard loading failed:", err);
-
         setError(
           err.message || "Failed to load dashboard."
         );
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
-    };
+    },
+    [token]
+  );
 
-    loadDashboard();
-  }, [token]);
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      loadDashboard();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [loadDashboard]);
 
   const member = dashboard?.member || user;
 
   const firstName =
-    member?.name?.split(" ")[0] || "Member";
+    member?.name?.trim()?.split(" ")[0] || "Member";
 
   const stats = dashboard?.stats || {
     completedWorkouts: 0,
@@ -75,17 +88,51 @@ function MemberDashboard() {
   const weeklyActivity =
     dashboard?.weeklyActivity || [];
 
-  const fitnessGoal =
-    member?.fitness_goal
-      ?.replaceAll("_", " ")
-      ?.replace(/\b\w/g, (letter) =>
-        letter.toUpperCase()
-      ) || "General Fitness";
+  const fitnessGoal = useMemo(() => {
+    return (
+      member?.fitness_goal
+        ?.replaceAll("_", " ")
+        ?.replace(/\b\w/g, (letter) =>
+          letter.toUpperCase()
+        ) || "General Fitness"
+    );
+  }, [member?.fitness_goal]);
+
+  const weeklyStats = useMemo(() => {
+    return weeklyActivity.reduce(
+      (total, day) => ({
+        workouts:
+          total.workouts + Number(day.workouts || 0),
+        calories:
+          total.calories + Number(day.calories || 0),
+        minutes:
+          total.minutes + Number(day.minutes || 0),
+      }),
+      {
+        workouts: 0,
+        calories: 0,
+        minutes: 0,
+      }
+    );
+  }, [weeklyActivity]);
+
+  const activeDays = useMemo(
+    () =>
+      weeklyActivity.filter(
+        (day) => Number(day.workouts || 0) > 0
+      ).length,
+    [weeklyActivity]
+  );
+
+  const consistency = Math.round(
+    (activeDays / 7) * 100
+  );
 
   const quickActions = [
     {
       title: "Start Workout",
-      description: "Choose a workout and start training.",
+      description:
+        "Choose a workout plan and start training.",
       icon: Dumbbell,
       path: "/member/workouts",
     },
@@ -99,7 +146,7 @@ function MemberDashboard() {
     {
       title: "Track Progress",
       description:
-        "Review your fitness progress and activity.",
+        "Review your training performance and activity.",
       icon: TrendingUp,
       path: "/member/progress",
     },
@@ -108,10 +155,15 @@ function MemberDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
-        <MemberSidebar />
+        <MemberSidebar
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+        />
 
         <div className="lg:ml-64">
-          <MemberHeader />
+          <MemberHeader
+            onMenuClick={() => setMobileOpen(true)}
+          />
 
           <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center p-6">
             <div className="text-center">
@@ -127,23 +179,45 @@ function MemberDashboard() {
     );
   }
 
-  if (error) {
+  if (error && !dashboard) {
     return (
       <div className="min-h-screen bg-[#050505] text-white">
-        <MemberSidebar />
+        <MemberSidebar
+          mobileOpen={mobileOpen}
+          setMobileOpen={setMobileOpen}
+        />
 
         <div className="lg:ml-64">
-          <MemberHeader />
+          <MemberHeader
+            onMenuClick={() => setMobileOpen(true)}
+          />
 
           <main className="p-5 sm:p-6 lg:p-8">
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6">
-              <p className="text-sm font-semibold text-red-400">
-                Dashboard Error
-              </p>
+            <div className="mx-auto max-w-3xl rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-6">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-red-500/10 p-3 text-red-400">
+                  <Activity size={20} />
+                </div>
 
-              <p className="mt-2 text-sm text-gray-400">
-                {error}
-              </p>
+                <div>
+                  <p className="text-sm font-semibold text-red-400">
+                    Dashboard Error
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
+                    {error}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => loadDashboard()}
+                className="mt-6 flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-xs font-black text-black transition hover:bg-orange-400"
+              >
+                <RefreshCw size={15} />
+                Retry
+              </button>
             </div>
           </main>
         </div>
@@ -153,44 +227,92 @@ function MemberDashboard() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <MemberSidebar />
+      <MemberSidebar
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+      />
 
       <div className="lg:ml-64">
-        <MemberHeader />
+        <MemberHeader
+          onMenuClick={() => setMobileOpen(true)}
+        />
 
-        <main className="p-5 sm:p-6 lg:p-8">
-          {/* HERO */}
-          <section className="mb-8 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-orange-500/15 via-[#111111] to-[#080808] p-6 sm:p-8">
-            <div className="max-w-3xl">
-              <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-orange-500">
-                Your Fitness Dashboard
-              </p>
+        <main className="mx-auto max-w-[1600px] p-5 sm:p-6 lg:p-8">
+          <section className="relative mb-8 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-orange-500/15 via-[#111111] to-[#080808] p-6 sm:p-8">
+            <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-orange-500/10 blur-3xl" />
 
-              <h2 className="text-3xl font-black sm:text-4xl">
-                Let's keep the momentum{" "}
-                <span className="text-orange-500">
-                  {firstName}.
-                </span>
-              </h2>
+            <div className="relative flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
+              <div className="max-w-3xl">
+                <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
+                  Your Fitness Dashboard
+                </p>
 
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-400">
-                Track your workouts, monitor your activity
-                and stay consistent with your fitness goals.
-              </p>
+                <h2 className="text-3xl font-black sm:text-4xl">
+                  Let's keep the momentum{" "}
+                  <span className="text-orange-500">
+                    {firstName}.
+                  </span>
+                </h2>
 
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold capitalize text-orange-400">
-                  Goal: {fitnessGoal}
-                </span>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-400">
+                  Track your workouts, monitor your activity
+                  and stay consistent with your fitness goals.
+                </p>
 
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-gray-400">
-                  Member
-                </span>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <span className="rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-xs font-semibold text-orange-400">
+                    Goal: {fitnessGoal}
+                  </span>
+
+                  <span className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-gray-400">
+                    {consistency}% weekly consistency
+                  </span>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => loadDashboard(true)}
+                disabled={refreshing}
+                className="flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs font-bold text-gray-400 transition hover:border-orange-500/30 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw
+                  size={15}
+                  className={
+                    refreshing
+                      ? "animate-spin"
+                      : ""
+                  }
+                />
+
+                {refreshing
+                  ? "Refreshing..."
+                  : "Refresh Data"}
+              </button>
             </div>
           </section>
 
-          {/* STATS */}
+          {error && dashboard && (
+            <div className="mb-6 flex items-center gap-3 rounded-2xl border border-yellow-500/20 bg-yellow-500/[0.05] px-5 py-4">
+              <Activity
+                size={17}
+                className="shrink-0 text-yellow-500"
+              />
+
+              <p className="text-xs text-gray-500">
+                {error}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => loadDashboard(true)}
+                className="ml-auto text-xs font-bold text-yellow-500 hover:text-yellow-400"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           <section className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Completed Workouts"
@@ -201,29 +323,29 @@ function MemberDashboard() {
 
             <StatCard
               label="Calories Burned"
-              value={stats.caloriesBurned.toLocaleString()}
+              value={Number(
+                stats.caloriesBurned || 0
+              ).toLocaleString()}
               unit="kcal"
               icon={Flame}
             />
 
             <StatCard
               label="Workout Time"
-              value={stats.workoutMinutes}
+              value={stats.workoutMinutes || 0}
               unit="minutes"
               icon={Clock3}
             />
 
             <StatCard
               label="Active Workouts"
-              value={stats.activeWorkouts}
+              value={stats.activeWorkouts || 0}
               unit="in progress"
               icon={Activity}
             />
           </section>
 
-          {/* ACTIVITY + QUICK ACTIONS */}
           <section className="mb-8 grid gap-6 xl:grid-cols-3">
-            {/* WEEKLY ACTIVITY */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 xl:col-span-2">
               <div className="mb-6 flex items-center justify-between">
                 <div>
@@ -232,7 +354,7 @@ function MemberDashboard() {
                   </p>
 
                   <h3 className="mt-1 text-xl font-bold">
-                    Recent weekly activity
+                    Last 7 days
                   </h3>
                 </div>
 
@@ -243,64 +365,88 @@ function MemberDashboard() {
               </div>
 
               {weeklyActivity.length === 0 ? (
-                <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-white/10">
-                  <div className="text-center">
-                    <CalendarDays
-                      size={24}
-                      className="mx-auto mb-3 text-gray-600"
+                <EmptyActivity />
+              ) : (
+                <>
+                  <div className="mb-6 grid grid-cols-3 gap-3">
+                    <MiniStat
+                      label="Workouts"
+                      value={weeklyStats.workouts}
+                      icon={Dumbbell}
                     />
 
-                    <p className="text-sm font-semibold text-gray-400">
-                      No workout activity yet
-                    </p>
+                    <MiniStat
+                      label="Minutes"
+                      value={weeklyStats.minutes}
+                      icon={Clock3}
+                    />
 
-                    <p className="mt-1 text-xs text-gray-600">
-                      Complete your first workout to see
-                      activity here.
-                    </p>
+                    <MiniStat
+                      label="Calories"
+                      value={weeklyStats.calories.toLocaleString()}
+                      icon={Flame}
+                    />
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {weeklyActivity.map((day) => (
-                    <div
-                      key={day.workout_date}
-                      className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/[0.02] p-4"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
-                        <CheckCircle2 size={18} />
-                      </div>
 
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">
-                          {new Date(
-                            day.workout_date
-                          ).toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
+                  <div className="space-y-3">
+                    {weeklyActivity.map((day) => {
+                      const workouts = Number(
+                        day.workouts || 0
+                      );
 
-                        <p className="mt-1 text-xs text-gray-500">
-                          {day.workouts} workout
-                          {day.workouts !== 1 ? "s" : ""}
-                          {" · "}
-                          {day.minutes} min
-                        </p>
-                      </div>
+                      return (
+                        <div
+                          key={day.date}
+                          className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-3 sm:gap-4 sm:p-4"
+                        >
+                          <div
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                              workouts > 0
+                                ? "bg-orange-500/10 text-orange-500"
+                                : "bg-white/[0.03] text-gray-700"
+                            }`}
+                          >
+                            <CheckCircle2 size={18} />
+                          </div>
 
-                      <div className="flex items-center gap-1 text-xs font-semibold text-orange-500">
-                        <Flame size={14} />
-                        {day.calories} kcal
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold">
+                              {new Date(
+                                day.date
+                              ).toLocaleDateString(
+                                "en-US",
+                                {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )}
+                            </p>
+
+                            <p className="mt-1 text-xs text-gray-500">
+                              {workouts} workout
+                              {workouts !== 1
+                                ? "s"
+                                : ""}{" "}
+                              · {day.minutes || 0} min
+                            </p>
+                          </div>
+
+                          <div className="hidden items-center gap-1 text-xs font-semibold text-orange-500 sm:flex">
+                            <Flame size={14} />
+                            {Number(
+                              day.calories || 0
+                            ).toLocaleString()}{" "}
+                            kcal
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
 
-            {/* FITNESS OVERVIEW */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
@@ -335,8 +481,18 @@ function MemberDashboard() {
                 />
 
                 <OverviewRow
+                  label="Completed Workouts"
+                  value={stats.completedWorkouts}
+                />
+
+                <OverviewRow
                   label="Active Sessions"
                   value={stats.activeWorkouts}
+                />
+
+                <OverviewRow
+                  label="Weekly Consistency"
+                  value={`${consistency}%`}
                 />
               </div>
 
@@ -350,7 +506,6 @@ function MemberDashboard() {
             </div>
           </section>
 
-          {/* RECENT WORKOUTS */}
           <section className="mb-8">
             <div className="mb-4 flex items-end justify-between">
               <div>
@@ -365,7 +520,7 @@ function MemberDashboard() {
 
               <Link
                 to="/member/workouts"
-                className="hidden items-center gap-2 text-xs font-bold text-orange-500 sm:flex"
+                className="hidden items-center gap-2 text-xs font-bold text-orange-500 transition hover:text-orange-400 sm:flex"
               >
                 All workouts
                 <ArrowRight size={14} />
@@ -390,7 +545,7 @@ function MemberDashboard() {
 
                 <Link
                   to="/member/workouts"
-                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-xs font-bold text-white transition hover:bg-orange-600"
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-xs font-bold text-black transition hover:bg-orange-400"
                 >
                   Start Workout
                   <ArrowRight size={14} />
@@ -400,21 +555,37 @@ function MemberDashboard() {
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {recentWorkouts.map((workout) => (
                   <div
-                    key={workout.log_id}
-                    className="rounded-2xl border border-white/10 bg-white/[0.02] p-5"
+                    key={workout.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition hover:-translate-y-1 hover:border-orange-500/20"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h4 className="font-bold">
-                          {workout.name || "Workout"}
+                      <div className="min-w-0">
+                        <h4 className="truncate font-bold">
+                          {workout.workout_name ||
+                            "Workout"}
                         </h4>
 
                         <p className="mt-1 text-xs capitalize text-gray-500">
-                          {workout.category || "General"}
+                          {workout.category ||
+                            "General"}
+
+                          {workout.difficulty
+                            ? ` · ${workout.difficulty}`
+                            : ""}
                         </p>
                       </div>
 
-                      <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-[10px] font-bold uppercase text-green-500">
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                          workout.status ===
+                          "completed"
+                            ? "bg-green-500/10 text-green-500"
+                            : workout.status ===
+                                "started"
+                              ? "bg-orange-500/10 text-orange-500"
+                              : "bg-gray-500/10 text-gray-500"
+                        }`}
+                      >
                         {workout.status}
                       </span>
                     </div>
@@ -426,7 +597,9 @@ function MemberDashboard() {
                         </p>
 
                         <p className="mt-1 text-sm font-bold">
-                          {workout.duration_minutes || 0} min
+                          {workout.duration_minutes ||
+                            0}{" "}
+                          min
                         </p>
                       </div>
 
@@ -436,25 +609,44 @@ function MemberDashboard() {
                         </p>
 
                         <p className="mt-1 text-sm font-bold">
-                          {workout.calories_burned || 0} kcal
+                          {Number(
+                            workout.calories_burned ||
+                              0
+                          ).toLocaleString()}{" "}
+                          kcal
                         </p>
                       </div>
                     </div>
 
-                    <p className="mt-4 text-xs text-gray-600">
-                      {workout.completed_at
-                        ? new Date(
-                            workout.completed_at
-                          ).toLocaleDateString()
-                        : "Recently"}
-                    </p>
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-xs text-gray-600">
+                        {workout.completed_at
+                          ? new Date(
+                              workout.completed_at
+                            ).toLocaleDateString()
+                          : workout.started_at
+                            ? `Started ${new Date(
+                                workout.started_at
+                              ).toLocaleDateString()}`
+                            : "Recently"}
+                      </p>
+
+                      {workout.status ===
+                        "started" && (
+                        <Link
+                          to="/member/workouts"
+                          className="text-xs font-bold text-orange-500 hover:text-orange-400"
+                        >
+                          Continue
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </section>
 
-          {/* QUICK ACTIONS */}
           <section>
             <div className="mb-4">
               <p className="text-xs font-bold uppercase tracking-widest text-orange-500">
@@ -507,6 +699,36 @@ function MemberDashboard() {
   );
 }
 
+function EmptyActivity() {
+  return (
+    <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-white/10">
+      <div className="px-5 text-center">
+        <CalendarDays
+          size={26}
+          className="mx-auto mb-3 text-gray-600"
+        />
+
+        <p className="text-sm font-semibold text-gray-400">
+          No workout activity yet
+        </p>
+
+        <p className="mt-1 text-xs leading-5 text-gray-600">
+          Complete your first workout to see your activity
+          here.
+        </p>
+
+        <Link
+          to="/member/workouts"
+          className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-orange-500"
+        >
+          Start Training
+          <ArrowRight size={14} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function StatCard({
   label,
   value,
@@ -539,6 +761,31 @@ function StatCard({
           {unit}
         </span>
       </div>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  icon: Icon,
+}) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+      <div className="flex items-center gap-2">
+        <Icon
+          size={14}
+          className="text-orange-500"
+        />
+
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          {label}
+        </span>
+      </div>
+
+      <p className="mt-2 text-xl font-black">
+        {value}
+      </p>
     </div>
   );
 }

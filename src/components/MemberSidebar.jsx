@@ -11,6 +11,8 @@ import {
   CreditCard,
 } from "lucide-react";
 
+import { useAuth } from "../context/useAuth.jsx";
+
 const navItems = [
   {
     label: "Dashboard",
@@ -49,22 +51,26 @@ const navItems = [
   },
 ];
 
-export default function MemberSidebar({ mobileOpen, setMobileOpen }) {
+export default function MemberSidebar({
+  mobileOpen,
+  setMobileOpen,
+}) {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  const user = JSON.parse(
-    localStorage.getItem("gymfit_user") || '{"name":"Member"}'
-  );
+  const displayName = user?.name || "Member";
 
-  const logout = () => {
-    localStorage.removeItem("gymfit_user");
-    navigate("/login");
+  const handleLogout = () => {
+    logout();
+    setMobileOpen(false);
+    navigate("/login", { replace: true });
   };
 
   return (
     <>
       {mobileOpen && (
         <button
+          type="button"
           onClick={() => setMobileOpen(false)}
           className="fixed inset-0 z-40 bg-black/70 lg:hidden"
           aria-label="Close menu"
@@ -78,8 +84,9 @@ export default function MemberSidebar({ mobileOpen, setMobileOpen }) {
       >
         <div className="flex h-20 items-center justify-between border-b border-white/10 px-6">
           <button
+            type="button"
             onClick={() => navigate("/member")}
-            className="text-2xl font-black"
+            className="text-2xl font-black text-white"
           >
             GYM<span className="text-orange-500">FIT</span>
             <span className="ml-2 text-xs font-semibold text-gray-600">
@@ -88,8 +95,10 @@ export default function MemberSidebar({ mobileOpen, setMobileOpen }) {
           </button>
 
           <button
+            type="button"
             onClick={() => setMobileOpen(false)}
             className="rounded-lg p-2 text-gray-500 hover:bg-white/5 hover:text-white lg:hidden"
+            aria-label="Close menu"
           >
             <X size={20} />
           </button>
@@ -97,17 +106,21 @@ export default function MemberSidebar({ mobileOpen, setMobileOpen }) {
 
         <div className="border-b border-white/10 p-5">
           <div className="flex items-center gap-3 rounded-2xl bg-white/[0.03] p-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 font-black">
-              {user.name?.charAt(0)?.toUpperCase() || "M"}
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500 font-black text-white">
+              {displayName.charAt(0).toUpperCase()}
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold">
-                {user.name || "Member"}
+              <p className="truncate text-sm font-bold text-white">
+                {displayName}
               </p>
 
-              <p className="mt-1 text-xs text-orange-500">
-                Pro Member
+              <p className="mt-1 text-xs capitalize text-orange-500">
+                {user?.role === "admin"
+                  ? "Admin"
+                  : user?.role === "trainer"
+                    ? "Trainer"
+                    : "Member"}
               </p>
             </div>
           </div>
@@ -146,7 +159,8 @@ export default function MemberSidebar({ mobileOpen, setMobileOpen }) {
 
         <div className="border-t border-white/10 p-4">
           <button
-            onClick={logout}
+            type="button"
+            onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-gray-500 transition hover:bg-red-500/10 hover:text-red-400"
           >
             <LogOut size={19} />

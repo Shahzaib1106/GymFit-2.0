@@ -1,15 +1,15 @@
-
-import { useEffect, useState } from "react";
-
 import {
   Dumbbell,
+  Filter,
   Play,
   Search,
   Target,
+  X,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-import MemberSidebar from "../../components/MemberSidebar";
-import MemberHeader from "../../components/MemberHeader";
+import MemberSidebar from "../../components/MemberSidebar.jsx";
+import MemberHeader from "../../components/MemberHeader.jsx";
 import { useAuth } from "../../context/useAuth.jsx";
 import { getExercises } from "../../services/memberService.js";
 
@@ -25,7 +25,10 @@ export default function Exercises() {
   const [error, setError] = useState("");
 
   const loadExercises = async () => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -54,24 +57,40 @@ export default function Exercises() {
     return () => clearTimeout(timer);
   }, [token, search, difficulty, category]);
 
-  const categories = [
-    ...new Set(
-      exercises
-        .map((exercise) => exercise.category)
-        .filter(Boolean)
-    ),
-  ];
+  const categories = useMemo(
+    () => [
+      ...new Set(
+        exercises
+          .map((exercise) => exercise.category)
+          .filter(Boolean)
+      ),
+    ],
+    [exercises]
+  );
+
+  const clearFilters = () => {
+    setSearch("");
+    setDifficulty("");
+    setCategory("");
+  };
+
+  const hasFilters =
+    search.trim() || difficulty || category;
 
   const getDifficultyClasses = (level) => {
     if (level === "Beginner") {
-      return "bg-green-500/10 text-green-400";
+      return "bg-green-500/10 text-green-400 border-green-500/10";
     }
 
     if (level === "Intermediate") {
-      return "bg-yellow-500/10 text-yellow-400";
+      return "bg-yellow-500/10 text-yellow-400 border-yellow-500/10";
     }
 
-    return "bg-red-500/10 text-red-400";
+    if (level === "Advanced") {
+      return "bg-red-500/10 text-red-400 border-red-500/10";
+    }
+
+    return "bg-white/5 text-gray-400 border-white/10";
   };
 
   const handleWatchDemo = (url) => {
@@ -87,31 +106,66 @@ export default function Exercises() {
         setMobileOpen={setMobileOpen}
       />
 
-      <div className="lg:pl-72">
+      <div className="lg:ml-64">
         <MemberHeader
-          onMenu={() => setMobileOpen(true)}
+          onMenuClick={() => setMobileOpen(true)}
         />
 
-        <main className="mx-auto max-w-[1600px] px-5 py-7 lg:px-8">
-          {/* Header */}
-          <div className="mb-8">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
-              Exercise Library
-            </p>
+        <main className="mx-auto max-w-[1600px] p-5 sm:p-6 lg:p-8">
+          <section className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-orange-500/15 via-[#111111] to-[#080808] p-6 sm:p-8">
+            <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
+                  Exercise Library
+                </p>
 
-            <h2 className="mt-2 text-3xl font-black">
-              Exercises
-            </h2>
+                <h2 className="mt-2 text-3xl font-black sm:text-4xl">
+                  Find Your Exercise
+                </h2>
 
-            <p className="mt-2 text-sm text-gray-500">
-              Explore exercises by muscle group, category and difficulty.
-            </p>
-          </div>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
+                  Explore exercises by category, target muscle
+                  group and difficulty level.
+                </p>
+              </div>
 
-          {/* Filters */}
-          <div className="mb-7 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+              <div className="flex w-fit items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-semibold text-gray-400">
+                <Dumbbell
+                  size={16}
+                  className="text-orange-500"
+                />
+
+                {exercises.length} exercises
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-7 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter
+                  size={16}
+                  className="text-orange-500"
+                />
+
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                  Filters
+                </p>
+              </div>
+
+              {hasFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 transition hover:text-orange-500"
+                >
+                  <X size={14} />
+                  Clear filters
+                </button>
+              )}
+            </div>
+
             <div className="grid gap-3 md:grid-cols-3">
-              {/* Search */}
               <div className="relative">
                 <Search
                   size={17}
@@ -129,7 +183,6 @@ export default function Exercises() {
                 />
               </div>
 
-              {/* Difficulty */}
               <select
                 value={difficulty}
                 onChange={(event) =>
@@ -154,7 +207,6 @@ export default function Exercises() {
                 </option>
               </select>
 
-              {/* Category */}
               <select
                 value={category}
                 onChange={(event) =>
@@ -173,25 +225,31 @@ export default function Exercises() {
                 ))}
               </select>
             </div>
-          </div>
+          </section>
 
-          {/* Count */}
           {!loading && !error && (
-            <div className="mb-5 flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Showing{" "}
-                <span className="font-bold text-white">
-                  {exercises.length}
-                </span>{" "}
-                exercises
-              </p>
+            <div className="mb-5 mt-7 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Showing{" "}
+                  <span className="font-bold text-white">
+                    {exercises.length}
+                  </span>{" "}
+                  exercises
+                </p>
+
+                {hasFilters && (
+                  <p className="mt-1 text-xs text-gray-700">
+                    Filtered results
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
-          {/* Loading */}
           {loading && (
-            <div className="py-16 text-center">
-              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
+            <div className="py-20 text-center">
+              <div className="mx-auto mb-4 h-9 w-9 animate-spin rounded-full border-2 border-orange-500 border-t-transparent" />
 
               <p className="text-sm text-gray-500">
                 Loading exercise library...
@@ -199,22 +257,32 @@ export default function Exercises() {
             </div>
           )}
 
-          {/* Error */}
           {!loading && error && (
             <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-6">
               <p className="text-sm font-semibold text-red-400">
+                Exercise Library Error
+              </p>
+
+              <p className="mt-2 text-sm text-gray-500">
                 {error}
               </p>
+
+              <button
+                type="button"
+                onClick={loadExercises}
+                className="mt-5 rounded-xl bg-orange-500 px-5 py-3 text-xs font-bold text-black transition hover:bg-orange-400"
+              >
+                Retry
+              </button>
             </div>
           )}
 
-          {/* Empty */}
           {!loading &&
             !error &&
             exercises.length === 0 && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-12 text-center">
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] p-12 text-center">
                 <Dumbbell
-                  size={32}
+                  size={34}
                   className="mx-auto mb-4 text-gray-600"
                 />
 
@@ -223,12 +291,21 @@ export default function Exercises() {
                 </p>
 
                 <p className="mt-2 text-sm text-gray-600">
-                  Try another search or filter.
+                  Try another search or change your filters.
                 </p>
+
+                {hasFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-5 rounded-xl border border-white/10 px-5 py-3 text-xs font-bold text-gray-400 transition hover:border-orange-500/30 hover:text-orange-500"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
             )}
 
-          {/* Exercise Grid */}
           {!loading &&
             !error &&
             exercises.length > 0 && (
@@ -236,68 +313,99 @@ export default function Exercises() {
                 {exercises.map((exercise) => (
                   <article
                     key={exercise.id}
-                    className="group rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:-translate-y-1 hover:border-orange-500/20 hover:bg-white/[0.04]"
+                    className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] transition duration-300 hover:-translate-y-1 hover:border-orange-500/25 hover:bg-white/[0.04]"
                   >
-                    {/* Top */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="rounded-xl bg-orange-500/10 p-3 text-orange-500">
-                        <Dumbbell size={20} />
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-orange-500">
+                          <Dumbbell size={20} />
+                        </div>
+
+                        <span
+                          className={`rounded-full border px-3 py-1 text-[10px] font-bold uppercase ${getDifficultyClasses(
+                            exercise.difficulty
+                          )}`}
+                        >
+                          {exercise.difficulty ||
+                            "All Levels"}
+                        </span>
                       </div>
 
-                      <span
-                        className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${getDifficultyClasses(
-                          exercise.difficulty
-                        )}`}
-                      >
-                        {exercise.difficulty || "All Levels"}
-                      </span>
-                    </div>
+                      <h3 className="mt-5 text-lg font-black">
+                        {exercise.name}
+                      </h3>
 
-                    {/* Name */}
-                    <h3 className="mt-5 text-lg font-black">
-                      {exercise.name}
-                    </h3>
-
-                    <p className="mt-1 text-xs text-orange-500">
-                      {exercise.category || "General"}
-                    </p>
-
-                    {/* Muscle Group */}
-                    <div className="mt-5 flex items-center gap-4 text-xs text-gray-500">
-                      <span className="flex items-center gap-1.5">
-                        <Target size={14} />
-
-                        {exercise.muscle_group ||
-                          "Full Body"}
-                      </span>
-                    </div>
-
-                    {/* Instructions */}
-                    {exercise.instructions && (
-                      <p className="mt-4 line-clamp-3 text-xs leading-5 text-gray-600">
-                        {exercise.instructions}
+                      <p className="mt-1 text-xs font-semibold text-orange-500">
+                        {exercise.category ||
+                          "General Training"}
                       </p>
-                    )}
 
-                    {/* Video */}
-                    {exercise.video_url && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleWatchDemo(
-                            exercise.video_url
-                          )
-                        }
-                        className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-xs font-bold text-black transition hover:bg-orange-400"
-                      >
-                        <Play
-                          size={15}
-                          fill="currentColor"
-                        />
+                      <div className="mt-5 grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-wider text-gray-600">
+                            Target
+                          </p>
 
-                        Watch Exercise Demo
-                      </button>
-                    )}
+                          <div className="mt-2 flex items-center gap-2">
+                            <Target
+                              size={14}
+                              className="text-orange-500"
+                            />
+
+                            <p className="truncate text-xs font-semibold text-gray-300">
+                              {exercise.muscle_group ||
+                                "Full Body"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-white/5 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-wider text-gray-600">
+                            Level
+                          </p>
+
+                          <p className="mt-2 truncate text-xs font-semibold text-gray-300">
+                            {exercise.difficulty ||
+                              "All Levels"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {exercise.instructions && (
+                        <div className="mt-5">
+                          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                            Instructions
+                          </p>
+
+                          <p className="line-clamp-4 text-xs leading-5 text-gray-500">
+                            {exercise.instructions}
+                          </p>
+                        </div>
+                      )}
+
+                      {exercise.video_url ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleWatchDemo(
+                              exercise.video_url
+                            )
+                          }
+                          className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-4 py-3 text-xs font-bold text-black transition hover:bg-orange-400"
+                        >
+                          <Play
+                            size={15}
+                            fill="currentColor"
+                          />
+
+                          Watch Exercise Demo
+                        </button>
+                      ) : (
+                        <div className="mt-5 flex w-full items-center justify-center rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 text-xs font-semibold text-gray-700">
+                          Demo unavailable
+                        </div>
+                      )}
+                    </div>
                   </article>
                 ))}
               </div>
