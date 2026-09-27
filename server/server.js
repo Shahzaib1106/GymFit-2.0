@@ -2,6 +2,7 @@ import "dotenv/config";
 import process from "node:process";
 import cors from "cors";
 import express from "express";
+import membershipRoutes from "./routes/membershipRoutes.js";
 
 import pool from "./config/db.js";
 
@@ -53,7 +54,7 @@ app.use("/api/member", memberRoutes);
 app.use("/api/workouts", workoutRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/nutrition", nutritionRoutes);
-
+app.use("/api/membership", membershipRoutes);
 app.use((req, res) => {
   res.status(404).json({
     success: false,

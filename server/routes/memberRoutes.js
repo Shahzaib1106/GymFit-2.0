@@ -2,37 +2,20 @@ import express from "express";
 
 import {
   getMyProfile,
+  updateMyProfile,
+  changeMyPassword,
   getDashboard,
-  startWorkout,
-  completeWorkout,
 } from "../controllers/memberController.js";
 
 import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get(
-  "/profile",
-  authMiddleware,
-  getMyProfile
-);
+router.use(authMiddleware);
 
-router.get(
-  "/dashboard",
-  authMiddleware,
-  getDashboard
-);
-
-router.post(
-  "/workouts/start",
-  authMiddleware,
-  startWorkout
-);
-
-router.patch(
-  "/workouts/:logId/complete",
-  authMiddleware,
-  completeWorkout
-);
+router.get("/profile", getMyProfile);
+router.patch("/profile", updateMyProfile);
+router.patch("/password", changeMyPassword);
+router.get("/dashboard", getDashboard);
 
 export default router;

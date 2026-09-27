@@ -1,5 +1,7 @@
 const MEMBER_API_URL = "http://localhost:5000/api/member";
 const WORKOUT_API_URL = "http://localhost:5000/api/workouts";
+const NUTRITION_API_URL = "http://localhost:5000/api/nutrition";
+const MEMBERSHIP_API_URL = "http://localhost:5000/api/membership";
 
 const request = async (url, options = {}) => {
   const response = await fetch(url, {
@@ -26,36 +28,6 @@ const request = async (url, options = {}) => {
 
   return data;
 };
-export const getNutritionLogs = async (token) => {
-  return request("http://localhost:5000/api/nutrition", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-};
-
-export const createNutritionLog = async (token, mealData) => {
-  return request("http://localhost:5000/api/nutrition", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(mealData),
-  });
-};
-
-export const deleteNutritionLog = async (token, logId) => {
-  return request(
-    `http://localhost:5000/api/nutrition/${logId}`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-};
 
 export const getMyProfile = async (token) => {
   return request(`${MEMBER_API_URL}/profile`, {
@@ -63,6 +35,29 @@ export const getMyProfile = async (token) => {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+};
+
+export const updateMyProfile = async (token, profileData) => {
+  return request(`${MEMBER_API_URL}/profile`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(profileData),
+  });
+};
+
+export const changeMyPassword = async (
+  token,
+  passwordData
+) => {
+  return request(`${MEMBER_API_URL}/password`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(passwordData),
   });
 };
 
@@ -166,4 +161,80 @@ export const getExerciseById = async (
       },
     }
   );
+};
+
+export const getNutritionLogs = async (token) => {
+  return request(`${NUTRITION_API_URL}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const createNutritionLog = async (
+  token,
+  mealData
+) => {
+  return request(`${NUTRITION_API_URL}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(mealData),
+  });
+};
+
+export const deleteNutritionLog = async (
+  token,
+  logId
+) => {
+  return request(`${NUTRITION_API_URL}/${logId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const getMembershipPlans = async (token) => {
+  return request(`${MEMBERSHIP_API_URL}/plans`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const getMyMembership = async (token) => {
+  return request(`${MEMBERSHIP_API_URL}/my`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const subscribeMembership = async (
+  token,
+  planId
+) => {
+  return request(`${MEMBERSHIP_API_URL}/subscribe`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      planId,
+    }),
+  });
+};
+
+export const getPaymentHistory = async (token) => {
+  return request(`${MEMBERSHIP_API_URL}/payments`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 };
