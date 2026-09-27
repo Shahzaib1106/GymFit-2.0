@@ -4,6 +4,7 @@ import cors from "cors";
 import express from "express";
 import membershipRoutes from "./routes/membershipRoutes.js";
 
+
 import pool from "./config/db.js";
 
 import authRoutes from "./routes/authRoutes.js";
@@ -91,6 +92,7 @@ const startServer = async () => {
       console.log(`  Workout:   http://localhost:${PORT}/api/workouts`);
       console.log(`  Admin:     http://localhost:${PORT}/api/admin`);
       console.log(`  Nutrition: http://localhost:${PORT}/api/nutrition`);
+      console.log("  Membership: http://localhost:5000/api/membership");
       console.log("========================================");
     });
   } catch (error) {

@@ -7,12 +7,14 @@ export const getNutritionLogs = async (req, res) => {
       SELECT
         nl.id,
         nl.member_id,
-        nl.meal_name,
         nl.meal_type,
+        nl.food_name,
         nl.calories,
         nl.protein_g,
-        nl.carbs_g,
+        nl.carbohydrates_g,
         nl.fats_g,
+        nl.quantity,
+        nl.consumed_at,
         nl.logged_at
       FROM nutrition_logs AS nl
       INNER JOIN members AS m
@@ -46,12 +48,13 @@ export const createNutritionLog = async (req, res) => {
       proteinG,
       carbsG,
       fatsG,
+      quantity,
     } = req.body;
 
     if (!mealName || !mealType) {
       return res.status(400).json({
         success: false,
-        message: "Meal name and meal type are required.",
+        message: "Food name and meal type are required.",
       });
     }
 
@@ -77,34 +80,50 @@ export const createNutritionLog = async (req, res) => {
       `
       INSERT INTO nutrition_logs (
         member_id,
-        meal_name,
         meal_type,
+        food_name,
         calories,
         protein_g,
-        carbs_g,
+        carbohydrates_g,
         fats_g,
+        quantity,
+        consumed_at,
         logged_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+      VALUES (
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+      )
       RETURNING
         id,
         member_id,
-        meal_name,
         meal_type,
+        food_name,
         calories,
         protein_g,
-        carbs_g,
+        carbohydrates_g,
         fats_g,
+        quantity,
+        consumed_at,
         logged_at
       `,
       [
         memberId,
-        mealName,
         mealType,
+        mealName,
         Number(calories) || 0,
         Number(proteinG) || 0,
         Number(carbsG) || 0,
         Number(fatsG) || 0,
+        quantity || null,
       ]
     );
 

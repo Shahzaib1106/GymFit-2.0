@@ -1,3 +1,4 @@
+
 import {
   BadgeCheck,
   Camera,
@@ -10,12 +11,16 @@ import {
   User,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import MemberSidebar from "../../components/MemberSidebar.jsx";
 import MemberHeader from "../../components/MemberHeader.jsx";
 import { useAuth } from "../../context/useAuth.jsx";
-import { getMyProfile } from "../../services/memberService.js";
+import {
+  getMyProfile,
+  updateMyProfile,
+  changeMyPassword,
+} from "../../services/memberService.js";
 
 const defaultForm = {
   name: "",
@@ -30,13 +35,25 @@ const defaultForm = {
 export default function Profile() {
   const { user, token } = useAuth();
 
+  const fileInputRef = useRef(null);
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [form, setForm] = useState(defaultForm);
+  const [profileImage, setProfileImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -57,13 +74,19 @@ export default function Profile() {
           email: member.email || user?.email || "",
           phone: member.phone || "",
           age: member.age || "",
-          height: member.height || "",
-          weight: member.weight || "",
+          height: member.height || member.height_cm || "",
+          weight: member.weight || member.weight_kg || "",
           goal:
             member.fitness_goal ||
             user?.fitness_goal ||
             "Build Muscle",
         });
+
+        setProfileImage(
+          member.profile_image ||
+            user?.profile_image ||
+            ""
+        );
       } catch (err) {
         console.error("Profile loading failed:", err);
 
@@ -78,6 +101,8 @@ export default function Profile() {
           goal:
             user?.fitness_goal || "Build Muscle",
         });
+
+        setProfileImage(user?.profile_image || "");
       } finally {
         setLoading(false);
       }
@@ -95,32 +120,152 @@ export default function Profile() {
     }));
 
     setSaved(false);
+    setError("");
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Profile image must be smaller than 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setProfileImage(reader.result);
+      setSaved(false);
+      setError("");
+    };
+
+    reader.onerror = () => {
+      setError("Failed to load the selected image.");
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const saveProfile = async (event) => {
     event.preventDefault();
 
+    if (!token) {
+      setError("Authentication required.");
+      return;
+    }
+
     setSaving(true);
     setSaved(false);
+    setError("");
 
     try {
-      /*
-        Profile update endpoint can be connected here when the
-        backend profile-update route is added.
-      */
-
-      await new Promise((resolve) =>
-        setTimeout(resolve, 500)
-      );
+      await updateMyProfile(token, {
+        name: form.name,
+        phone: form.phone,
+        age: form.age
+          ? Number(form.age)
+          : null,
+        height: form.height
+          ? Number(form.height)
+          : null,
+        weight: form.weight
+          ? Number(form.weight)
+          : null,
+        fitness_goal: form.goal,
+        profile_image: profileImage || null,
+      });
 
       setSaved(true);
     } catch (err) {
       console.error("Profile save failed:", err);
+
       setError(
         err.message || "Failed to save your profile."
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = (event) => {
+    const { name, value } = event.target;
+
+    setPasswordForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+
+    setPasswordMessage("");
+  };
+
+  const savePassword = async (event) => {
+    event.preventDefault();
+
+    if (!token) {
+      setPasswordMessage("Authentication required.");
+      return;
+    }
+
+    if (
+      passwordForm.newPassword !==
+      passwordForm.confirmPassword
+    ) {
+      setPasswordMessage(
+        "New passwords do not match."
+      );
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordMessage(
+        "New password must be at least 6 characters."
+      );
+      return;
+    }
+
+    setPasswordSaving(true);
+    setPasswordMessage("");
+
+    try {
+      await changeMyPassword(token, {
+        currentPassword:
+          passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      setPasswordMessage(
+        "Password changed successfully."
+      );
+    } catch (err) {
+      console.error(
+        "Password change failed:",
+        err
+      );
+
+      setPasswordMessage(
+        err.message || "Failed to change password."
+      );
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -224,18 +369,35 @@ export default function Profile() {
             <aside className="h-fit space-y-5">
               <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
                 <div className="relative mx-auto w-fit">
-                  <div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-orange-500 text-4xl font-black text-black shadow-lg shadow-orange-500/10">
-                    {firstLetter}
+                  <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-3xl bg-orange-500 text-4xl font-black text-black shadow-lg shadow-orange-500/10">
+                    {profileImage ? (
+                      <img
+                        src={profileImage}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      firstLetter
+                    )}
                   </div>
 
                   <button
                     type="button"
+                    onClick={handlePhotoClick}
                     className="absolute -bottom-2 -right-2 rounded-xl border-4 border-[#080808] bg-white p-2 text-black transition hover:bg-orange-500"
                     aria-label="Change profile photo"
-                    title="Profile photo"
+                    title="Change profile photo"
                   >
                     <Camera size={16} />
                   </button>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="hidden"
+                  />
                 </div>
 
                 <div className="mt-5 text-center">
@@ -445,9 +607,10 @@ export default function Profile() {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowPassword(true)
-                    }
+                    onClick={() => {
+                      setShowPassword(true);
+                      setPasswordMessage("");
+                    }}
                     className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-bold text-gray-400 transition hover:border-orange-500/30 hover:text-orange-500"
                   >
                     Change Password
@@ -486,7 +649,10 @@ export default function Profile() {
 
       {showPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c0c0c] p-6 shadow-2xl">
+          <form
+            onSubmit={savePassword}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c0c0c] p-6 shadow-2xl"
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-orange-500">
@@ -508,28 +674,63 @@ export default function Profile() {
               </button>
             </div>
 
-            <div className="mt-6 rounded-xl border border-orange-500/10 bg-orange-500/[0.04] p-4">
-              <div className="flex gap-3">
-                <Lock
-                  size={17}
-                  className="mt-0.5 shrink-0 text-orange-500"
-                />
+            <div className="mt-6 space-y-4">
+              <PasswordField
+                label="Current Password"
+                name="currentPassword"
+                value={passwordForm.currentPassword}
+                onChange={handlePasswordChange}
+              />
 
-                <p className="text-xs leading-5 text-gray-500">
-                  Password management will be connected to the
-                  secure backend authentication flow.
-                </p>
-              </div>
+              <PasswordField
+                label="New Password"
+                name="newPassword"
+                value={passwordForm.newPassword}
+                onChange={handlePasswordChange}
+              />
+
+              <PasswordField
+                label="Confirm New Password"
+                name="confirmPassword"
+                value={passwordForm.confirmPassword}
+                onChange={handlePasswordChange}
+              />
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowPassword(false)}
-              className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-3 text-xs font-black text-black transition hover:bg-orange-400"
-            >
-              Close
-            </button>
-          </div>
+            {passwordMessage && (
+              <p
+                className={`mt-4 rounded-xl px-4 py-3 text-xs ${
+                  passwordMessage.includes(
+                    "successfully"
+                  )
+                    ? "bg-green-500/10 text-green-400"
+                    : "bg-red-500/10 text-red-400"
+                }`}
+              >
+                {passwordMessage}
+              </p>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPassword(false)}
+                className="flex-1 rounded-xl border border-white/10 px-5 py-3 text-xs font-bold text-gray-400 transition hover:text-white"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={passwordSaving}
+                className="flex-1 rounded-xl bg-orange-500 px-5 py-3 text-xs font-black text-black transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {passwordSaving
+                  ? "Updating..."
+                  : "Update Password"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
@@ -591,6 +792,34 @@ function Field({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+function PasswordField({
+  label,
+  name,
+  value,
+  onChange,
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="mb-2 block text-xs font-semibold text-gray-400"
+      >
+        {label}
+      </label>
+
+      <input
+        id={name}
+        type="password"
+        name={name}
+        value={value}
+        onChange={onChange}
+        required
+        className="w-full rounded-xl border border-white/10 bg-black px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-gray-700 focus:border-orange-500"
+      />
     </div>
   );
 }

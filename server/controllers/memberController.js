@@ -1,6 +1,19 @@
 import bcrypt from "bcryptjs";
 import pool from "../config/db.js";
 
+const getMemberId = async (userId) => {
+  const result = await pool.query(
+    `
+    SELECT id
+    FROM members
+    WHERE user_id = $1
+    `,
+    [userId]
+  );
+
+  return result.rows[0]?.id || null;
+};
+
 export const getMyProfile = async (req, res) => {
   try {
     const result = await pool.query(
@@ -14,13 +27,18 @@ export const getMyProfile = async (req, res) => {
         u.gender,
         u.profile_image,
         u.role,
+        u.is_active,
         u.created_at,
         m.id AS member_id,
-        m.fitness_goal,
+        m.membership_status,
         m.height_cm,
-        m.weight_kg
-      FROM users AS u
-      LEFT JOIN members AS m
+        m.weight_kg,
+        m.fitness_goal,
+        m.emergency_contact_name,
+        m.emergency_contact_phone,
+        m.joined_at
+      FROM users u
+      LEFT JOIN members m
         ON m.user_id = u.id
       WHERE u.id = $1
       `,
@@ -30,16 +48,46 @@ export const getMyProfile = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "User profile not found.",
+        message: "Profile not found.",
       });
+    }
+
+    const member = result.rows[0];
+
+    let age = null;
+
+    if (member.date_of_birth) {
+      const birthDate = new Date(member.date_of_birth);
+      const today = new Date();
+
+      age =
+        today.getFullYear() -
+        birthDate.getFullYear();
+
+      const monthDifference =
+        today.getMonth() -
+        birthDate.getMonth();
+
+      if (
+        monthDifference < 0 ||
+        (monthDifference === 0 &&
+          today.getDate() < birthDate.getDate())
+      ) {
+        age--;
+      }
     }
 
     return res.status(200).json({
       success: true,
-      profile: result.rows[0],
+      member: {
+        ...member,
+        age,
+        height: member.height_cm,
+        weight: member.weight_kg,
+      },
     });
   } catch (error) {
-    console.error("Get profile error:", error);
+    console.error("Profile error:", error);
 
     return res.status(500).json({
       success: false,
@@ -55,89 +103,108 @@ export const updateMyProfile = async (req, res) => {
     const {
       name,
       phone,
-      dateOfBirth,
-      gender,
-      fitnessGoal,
-      heightCm,
-      weightKg,
+      age,
+      height,
+      weight,
+      fitness_goal,
+      profile_image,
     } = req.body;
 
     await client.query("BEGIN");
 
-    const userResult = await client.query(
-      `
-      UPDATE users
-      SET
-        name = COALESCE(NULLIF($1, ''), name),
-        phone = NULLIF($2, ''),
-        date_of_birth = NULLIF($3, '')::date,
-        gender = NULLIF($4, ''),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $5
-      RETURNING
-        id,
-        name,
-        email,
-        phone,
-        date_of_birth,
-        gender,
-        profile_image,
-        role,
-        created_at
-      `,
-      [
-        name,
-        phone,
-        dateOfBirth,
-        gender,
-        req.user.id,
-      ]
-    );
+    let dateOfBirth = null;
 
-    if (userResult.rows.length === 0) {
-      await client.query("ROLLBACK");
+    if (age !== null && age !== undefined && age !== "") {
+      const numericAge = Number(age);
 
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
+      if (
+        Number.isNaN(numericAge) ||
+        numericAge < 1 ||
+        numericAge > 120
+      ) {
+        await client.query("ROLLBACK");
+
+        return res.status(400).json({
+          success: false,
+          message: "Invalid age.",
+        });
+      }
+
+      const currentYear = new Date().getFullYear();
+      dateOfBirth = `${currentYear - numericAge}-01-01`;
     }
 
     await client.query(
       `
-      UPDATE members
+      UPDATE users
       SET
-        fitness_goal = COALESCE(NULLIF($1, ''), fitness_goal),
-        height_cm = CASE
-          WHEN $2 IS NULL OR $2 = '' THEN height_cm
-          ELSE $2::numeric
-        END,
-        weight_kg = CASE
-          WHEN $3 IS NULL OR $3 = '' THEN weight_kg
-          ELSE $3::numeric
-        END,
+        name = COALESCE($1, name),
+        phone = $2,
+        date_of_birth = $3,
+        profile_image = $4,
         updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = $4
+      WHERE id = $5
       `,
       [
-        fitnessGoal,
-        heightCm,
-        weightKg,
+        name || null,
+        phone || null,
+        dateOfBirth,
+        profile_image || null,
         req.user.id,
       ]
     );
+
+    const memberId = await getMemberId(req.user.id);
+
+    if (!memberId) {
+      await client.query(
+        `
+        INSERT INTO members (
+          user_id,
+          membership_status,
+          height_cm,
+          weight_kg,
+          fitness_goal
+        )
+        VALUES ($1, 'active', $2, $3, $4)
+        `,
+        [
+          req.user.id,
+          height || null,
+          weight || null,
+          fitness_goal || null,
+        ]
+      );
+    } else {
+      await client.query(
+        `
+        UPDATE members
+        SET
+          height_cm = $1,
+          weight_kg = $2,
+          fitness_goal = $3,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $4
+        `,
+        [
+          height || null,
+          weight || null,
+          fitness_goal || null,
+          memberId,
+        ]
+      );
+    }
 
     await client.query("COMMIT");
 
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully.",
-      profile: userResult.rows[0],
     });
   } catch (error) {
     await client.query("ROLLBACK");
 
-    console.error("Update profile error:", error);
+    console.error("Profile update error:", error);
 
     return res.status(500).json({
       success: false,
@@ -158,14 +225,16 @@ export const changeMyPassword = async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Current password and new password are required.",
+        message:
+          "Current password and new password are required.",
       });
     }
 
-    if (newPassword.length < 8) {
+    if (newPassword.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "New password must be at least 8 characters.",
+        message:
+          "New password must be at least 6 characters.",
       });
     }
 
@@ -185,19 +254,19 @@ export const changeMyPassword = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(
+    const valid = await bcrypt.compare(
       currentPassword,
       result.rows[0].password_hash
     );
 
-    if (!isMatch) {
+    if (!valid) {
       return res.status(400).json({
         success: false,
         message: "Current password is incorrect.",
       });
     }
 
-    const hashedPassword = await bcrypt.hash(
+    const passwordHash = await bcrypt.hash(
       newPassword,
       10
     );
@@ -210,7 +279,7 @@ export const changeMyPassword = async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $2
       `,
-      [hashedPassword, req.user.id]
+      [passwordHash, req.user.id]
     );
 
     return res.status(200).json({
@@ -218,7 +287,7 @@ export const changeMyPassword = async (req, res) => {
       message: "Password changed successfully.",
     });
   } catch (error) {
-    console.error("Change password error:", error);
+    console.error("Password change error:", error);
 
     return res.status(500).json({
       success: false,
@@ -231,9 +300,22 @@ export const getDashboard = async (req, res) => {
   try {
     const memberResult = await pool.query(
       `
-      SELECT id
-      FROM members
-      WHERE user_id = $1
+      SELECT
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        u.profile_image,
+        u.created_at,
+        m.id AS member_id,
+        m.membership_status,
+        m.height_cm,
+        m.weight_kg,
+        m.fitness_goal
+      FROM users u
+      INNER JOIN members m
+        ON m.user_id = u.id
+      WHERE u.id = $1
       `,
       [req.user.id]
     );
@@ -245,12 +327,15 @@ export const getDashboard = async (req, res) => {
       });
     }
 
-    const memberId = memberResult.rows[0].id;
+    const member = memberResult.rows[0];
+    const memberId = member.member_id;
 
     const [
       workoutStats,
       recentWorkouts,
       weeklyStats,
+      availableWorkouts,
+      availableExercises,
     ] = await Promise.all([
       pool.query(
         `
@@ -289,8 +374,8 @@ export const getDashboard = async (req, res) => {
           w.name AS workout_name,
           w.category,
           w.difficulty
-        FROM workout_logs AS wl
-        LEFT JOIN workouts AS w
+        FROM workout_logs wl
+        LEFT JOIN workouts w
           ON w.id = wl.workout_id
         WHERE wl.member_id = $1
         ORDER BY wl.created_at DESC
@@ -316,7 +401,7 @@ export const getDashboard = async (req, res) => {
             FILTER (WHERE wl.status = 'completed'),
             0
           )::int AS workout_minutes
-        FROM workout_logs AS wl
+        FROM workout_logs wl
         WHERE wl.member_id = $1
           AND wl.created_at >= CURRENT_DATE - INTERVAL '6 days'
         GROUP BY DATE(wl.created_at)
@@ -324,13 +409,64 @@ export const getDashboard = async (req, res) => {
         `,
         [memberId]
       ),
+
+      pool.query(
+        `
+        SELECT COUNT(*)::int AS count
+        FROM workouts
+        WHERE is_active = true
+        `
+      ),
+
+      pool.query(
+        `
+        SELECT COUNT(*)::int AS count
+        FROM exercises
+        `
+      ),
     ]);
+
+    const stats = workoutStats.rows[0];
 
     return res.status(200).json({
       success: true,
-      stats: workoutStats.rows[0],
-      recentWorkouts: recentWorkouts.rows,
-      weeklyStats: weeklyStats.rows,
+      dashboard: {
+        member: {
+          id: member.id,
+          memberId: member.member_id,
+          name: member.name,
+          email: member.email,
+          phone: member.phone,
+          profileImage: member.profile_image,
+          membershipStatus:
+            member.membership_status,
+          height: member.height_cm,
+          weight: member.weight_kg,
+          fitnessGoal: member.fitness_goal,
+          createdAt: member.created_at,
+        },
+
+        stats: {
+          completedWorkouts:
+            stats.completed_workouts || 0,
+          caloriesBurned:
+            stats.calories_burned || 0,
+          workoutMinutes:
+            stats.workout_minutes || 0,
+          activeWorkouts:
+            stats.active_workouts || 0,
+          availableWorkouts:
+            availableWorkouts.rows[0].count || 0,
+          availableExercises:
+            availableExercises.rows[0].count || 0,
+        },
+
+        recentWorkouts:
+          recentWorkouts.rows,
+
+        weeklyActivity:
+          weeklyStats.rows,
+      },
     });
   } catch (error) {
     console.error("Dashboard error:", error);
@@ -338,6 +474,163 @@ export const getDashboard = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to load dashboard.",
+    });
+  }
+};
+
+export const startWorkout = async (req, res) => {
+  try {
+    const { workoutId } = req.body;
+
+    if (!workoutId) {
+      return res.status(400).json({
+        success: false,
+        message: "Workout ID is required.",
+      });
+    }
+
+    const memberId = await getMemberId(req.user.id);
+
+    if (!memberId) {
+      return res.status(404).json({
+        success: false,
+        message: "Member profile not found.",
+      });
+    }
+
+    const workout = await pool.query(
+      `
+      SELECT id, name, calories_burned
+      FROM workouts
+      WHERE id = $1
+        AND is_active = true
+      `,
+      [workoutId]
+    );
+
+    if (workout.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Workout not found.",
+      });
+    }
+
+    const activeWorkout = await pool.query(
+      `
+      SELECT id
+      FROM workout_logs
+      WHERE member_id = $1
+        AND status = 'started'
+      LIMIT 1
+      `,
+      [memberId]
+    );
+
+    if (activeWorkout.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "You already have an active workout.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO workout_logs (
+        member_id,
+        workout_id,
+        started_at,
+        status
+      )
+      VALUES (
+        $1,
+        $2,
+        CURRENT_TIMESTAMP,
+        'started'
+      )
+      RETURNING *
+      `,
+      [memberId, workoutId]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Workout started.",
+      log: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Start workout error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to start workout.",
+    });
+  }
+};
+
+export const completeWorkout = async (req, res) => {
+  try {
+    const { logId } = req.params;
+
+    const memberId = await getMemberId(req.user.id);
+
+    if (!memberId) {
+      return res.status(404).json({
+        success: false,
+        message: "Member profile not found.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE workout_logs wl
+      SET
+        completed_at = CURRENT_TIMESTAMP,
+        duration_minutes = GREATEST(
+          1,
+          ROUND(
+            EXTRACT(
+              EPOCH FROM (
+                CURRENT_TIMESTAMP - wl.started_at
+              )
+            ) / 60
+          )::int
+        ),
+        calories_burned = COALESCE(
+          w.calories_burned,
+          0
+        ),
+        status = 'completed'
+      FROM workouts w
+      WHERE wl.id = $1
+        AND wl.member_id = $2
+        AND wl.workout_id = w.id
+        AND wl.status = 'started'
+      RETURNING wl.*
+      `,
+      [logId, memberId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Active workout log not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Workout completed.",
+      log: result.rows[0],
+    });
+  } catch (error) {
+    console.error(
+      "Complete workout error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to complete workout.",
     });
   }
 };
