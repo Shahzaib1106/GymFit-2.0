@@ -57,6 +57,7 @@ export const getDashboard = async (req, res) => {
           u.name,
           u.email,
           u.role,
+          u.is_active,
           u.created_at,
           m.id AS member_id,
           m.fitness_goal
@@ -101,7 +102,9 @@ export const getMembers = async (req, res) => {
         u.name,
         u.email,
         u.role,
+        u.is_active,
         u.created_at,
+        u.updated_at,
         m.id AS member_id,
         m.fitness_goal
       FROM users AS u
@@ -124,7 +127,366 @@ export const getMembers = async (req, res) => {
   }
 };
 
-export const getWorkoutLogs = async (req, res) => {
+export const updateMemberStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "isActive must be true or false.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET
+        is_active = $1,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      RETURNING
+        id,
+        name,
+        email,
+        role,
+        is_active,
+        updated_at
+      `,
+      [isActive, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: isActive
+        ? "Member activated successfully."
+        : "Member deactivated successfully.",
+      member: result.rows[0],
+    });
+  } catch (error) {
+    console.error(
+      "Admin member status error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update member status.",
+    });
+  }
+};
+
+export const deleteMember = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (Number(id) === Number(req.user.id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot delete your own admin account.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      DELETE FROM users
+      WHERE id = $1
+      RETURNING id, name, email, role
+      `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Member deleted successfully.",
+      member: result.rows[0],
+    });
+  } catch (error) {
+    console.error(
+      "Admin member delete error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete member.",
+    });
+  }
+};
+
+export const getAdminWorkouts = async (
+  req,
+  res
+) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        w.id,
+        w.name,
+        w.description,
+        w.category,
+        w.difficulty,
+        w.duration_minutes,
+        w.calories_burned,
+        w.is_active,
+        w.created_at,
+        w.updated_at,
+        COUNT(we.id)::int AS exercise_count
+      FROM workouts AS w
+      LEFT JOIN workout_exercises AS we
+        ON we.workout_id = w.id
+      GROUP BY
+        w.id,
+        w.name,
+        w.description,
+        w.category,
+        w.difficulty,
+        w.duration_minutes,
+        w.calories_burned,
+        w.is_active,
+        w.created_at,
+        w.updated_at
+      ORDER BY w.created_at DESC
+    `);
+
+    return res.status(200).json({
+      success: true,
+      workouts: result.rows,
+    });
+  } catch (error) {
+    console.error(
+      "Admin workouts error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load workouts.",
+    });
+  }
+};
+
+export const createWorkout = async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      category,
+      difficulty,
+      durationMinutes,
+      caloriesBurned,
+    } = req.body;
+
+    if (!name || !difficulty) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Workout name and difficulty are required.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO workouts (
+        name,
+        description,
+        category,
+        difficulty,
+        duration_minutes,
+        calories_burned,
+        is_active
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, true)
+      RETURNING
+        id,
+        name,
+        description,
+        category,
+        difficulty,
+        duration_minutes,
+        calories_burned,
+        is_active,
+        created_at
+      `,
+      [
+        name,
+        description || null,
+        category || null,
+        difficulty,
+        durationMinutes
+          ? Number(durationMinutes)
+          : null,
+        caloriesBurned
+          ? Number(caloriesBurned)
+          : null,
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Workout created successfully.",
+      workout: result.rows[0],
+    });
+  } catch (error) {
+    console.error(
+      "Admin create workout error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create workout.",
+    });
+  }
+};
+
+export const updateWorkout = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      name,
+      description,
+      category,
+      difficulty,
+      durationMinutes,
+      caloriesBurned,
+    } = req.body;
+
+    if (!name || !difficulty) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Workout name and difficulty are required.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE workouts
+      SET
+        name = $1,
+        description = $2,
+        category = $3,
+        difficulty = $4,
+        duration_minutes = $5,
+        calories_burned = $6,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $7
+      RETURNING
+        id,
+        name,
+        description,
+        category,
+        difficulty,
+        duration_minutes,
+        calories_burned,
+        is_active,
+        updated_at
+      `,
+      [
+        name,
+        description || null,
+        category || null,
+        difficulty,
+        durationMinutes
+          ? Number(durationMinutes)
+          : null,
+        caloriesBurned
+          ? Number(caloriesBurned)
+          : null,
+        id,
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Workout not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Workout updated successfully.",
+      workout: result.rows[0],
+    });
+  } catch (error) {
+    console.error(
+      "Admin update workout error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update workout.",
+    });
+  }
+};
+
+export const deleteWorkout = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      UPDATE workouts
+      SET
+        is_active = false,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, name, is_active
+      `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Workout not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Workout deactivated successfully.",
+      workout: result.rows[0],
+    });
+  } catch (error) {
+    console.error(
+      "Admin delete workout error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to deactivate workout.",
+    });
+  }
+};
+
+export const getWorkoutLogs = async (
+  req,
+  res
+) => {
   try {
     const result = await pool.query(`
       SELECT
@@ -157,11 +519,15 @@ export const getWorkoutLogs = async (req, res) => {
       logs: result.rows,
     });
   } catch (error) {
-    console.error("Admin workout logs error:", error);
+    console.error(
+      "Admin workout logs error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Failed to load workout activity.",
+      message:
+        "Failed to load workout activity.",
     });
   }
 };
