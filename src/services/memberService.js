@@ -26,6 +26,36 @@ const request = async (url, options = {}) => {
 
   return data;
 };
+export const getNutritionLogs = async (token) => {
+  return request("http://localhost:5000/api/nutrition", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
+export const createNutritionLog = async (token, mealData) => {
+  return request("http://localhost:5000/api/nutrition", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(mealData),
+  });
+};
+
+export const deleteNutritionLog = async (token, logId) => {
+  return request(
+    `http://localhost:5000/api/nutrition/${logId}`,
+    {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+};
 
 export const getMyProfile = async (token) => {
   return request(`${MEMBER_API_URL}/profile`, {

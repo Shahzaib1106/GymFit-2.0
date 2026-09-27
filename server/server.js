@@ -9,6 +9,7 @@ import authRoutes from "./routes/authRoutes.js";
 import memberRoutes from "./routes/memberRoutes.js";
 import workoutRoutes from "./routes/workoutRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import nutritionRoutes from "./routes/nutritionRoutes.js";
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/member", memberRoutes);
 app.use("/api/workouts", workoutRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/nutrition", nutritionRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
@@ -81,12 +83,13 @@ const startServer = async () => {
       console.log("========================================");
       console.log("  GymFit 2.0 Backend");
       console.log("========================================");
-      console.log(`  Server:  http://localhost:${PORT}`);
-      console.log(`  Health:  http://localhost:${PORT}/api/health`);
-      console.log(`  Auth:    http://localhost:${PORT}/api/auth`);
-      console.log(`  Member:  http://localhost:${PORT}/api/member`);
-      console.log(`  Workout: http://localhost:${PORT}/api/workouts`);
-      console.log(`  Admin:   http://localhost:${PORT}/api/admin`);
+      console.log(`  Server:    http://localhost:${PORT}`);
+      console.log(`  Health:    http://localhost:${PORT}/api/health`);
+      console.log(`  Auth:      http://localhost:${PORT}/api/auth`);
+      console.log(`  Member:    http://localhost:${PORT}/api/member`);
+      console.log(`  Workout:   http://localhost:${PORT}/api/workouts`);
+      console.log(`  Admin:     http://localhost:${PORT}/api/admin`);
+      console.log(`  Nutrition: http://localhost:${PORT}/api/nutrition`);
       console.log("========================================");
     });
   } catch (error) {
